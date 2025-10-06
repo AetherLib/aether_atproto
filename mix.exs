@@ -23,7 +23,7 @@ defmodule AetherAtprotoCore.MixProject do
       # docs: docs(),
       homepage_url: "https://gitea.fullstack.ing/FullStack.ing/aether",
       description: """
-      Aether is the elixir lib for implementating the AT Protocol in your phoenix app.
+      Aether AT Proto Core is common shared logic for use in other libs that implement the AT Protocol.
       """,
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: Mix.compilers()
@@ -48,6 +48,7 @@ defmodule AetherAtprotoCore.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:jason, "~> 1.4", only: :test, runtime: false},
       {:joken, "~> 2.6"},
       {:jose, "~> 1.11"},
       {:cbor, "~> 1.0"},
