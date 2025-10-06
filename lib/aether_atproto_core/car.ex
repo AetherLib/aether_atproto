@@ -44,6 +44,7 @@ defmodule AetherATProtoCore.CAR do
   - Blocks should be de-duplicated by CID
   """
 
+  alias AetherATProtoCore.CAR.Block
   alias AetherATProtoCore.CID
   alias AetherATProtoCore.Varint
 
@@ -52,23 +53,8 @@ defmodule AetherATProtoCore.CAR do
   @type t :: %__MODULE__{
           version: pos_integer(),
           roots: [CID.t()],
-          blocks: [AetherATProtoCore.CAR.Block.t()]
+          blocks: [Block.t()]
         }
-
-  defmodule Block do
-    @moduledoc """
-    A single block in a CAR file.
-
-    Each block contains a CID and its associated data.
-    """
-
-    defstruct [:cid, :data]
-
-    @type t :: %__MODULE__{
-            cid: CID.t(),
-            data: binary()
-          }
-  end
 
   @doc """
   Encode a CAR structure to binary format.

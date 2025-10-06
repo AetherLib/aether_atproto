@@ -78,12 +78,11 @@ defmodule AetherATProtoCore.TID do
 
       # Generate TID with specific clock ID (for deterministic testing)
       iex> AetherATProtoCore.TID.from_timestamp(1_700_000_000_000_000, 42)
-      "2g0c0c0c0c0c2a"
+      "3ke6kg3wk223e"  # This value is deterministic with clock_id=42
 
       # The function now properly handles the default case without type violations
       iex> is_binary(AetherATProtoCore.TID.from_timestamp(1_700_000_000_000_000))
       true
-
   """
   @spec from_timestamp(integer(), non_neg_integer()) :: String.t()
   def from_timestamp(timestamp_us, clock_id \\ :rand.uniform(1024) - 1)
