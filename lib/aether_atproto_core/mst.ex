@@ -58,7 +58,7 @@ defmodule AetherATProtoCore.MST do
 
   @type t :: %__MODULE__{
           layer: non_neg_integer(),
-          entries: [AetherATProtoCore.MST.Entry.t()],
+          entries: [Entry.t()],
           pointer: CID.t() | nil
         }
 

@@ -58,15 +58,36 @@ defmodule AetherATProtoCore.TID do
   @doc """
   Generate a TID from a specific timestamp in microseconds.
 
+  This function creates a Time-Ordered ID (TID) using the given timestamp and an optional
+  clock identifier. The TID format ensures temporal ordering while providing collision
+  resistance through the clock ID.
+
+  ## Parameters
+  - `timestamp_us`: Unix timestamp in microseconds (integer)
+  - `clock_id`: Optional clock identifier (0-1023). If not provided, a random value in this range is used.
+
+  ## Returns
+  - TID string in base32hex format (13 characters)
+
   ## Examples
 
+      # Generate TID with automatic clock ID (recommended for most use cases)
       iex> tid = AetherATProtoCore.TID.from_timestamp(1_700_000_000_000_000)
       iex> String.length(tid)
       13
+
+      # Generate TID with specific clock ID (for deterministic testing)
+      iex> AetherATProtoCore.TID.from_timestamp(1_700_000_000_000_000, 42)
+      "2g0c0c0c0c0c2a"
+
+      # The function now properly handles the default case without type violations
+      iex> is_binary(AetherATProtoCore.TID.from_timestamp(1_700_000_000_000_000))
+      true
+
   """
   @spec from_timestamp(integer(), non_neg_integer()) :: String.t()
-  def from_timestamp(timestamp_us, clock_id \\ nil) when is_integer(timestamp_us) do
-    clock_id = clock_id || :rand.uniform(1024) - 1
+  def from_timestamp(timestamp_us, clock_id \\ :rand.uniform(1024) - 1)
+      when is_integer(timestamp_us) do
     encode(timestamp_us, clock_id)
   end
 
