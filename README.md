@@ -1,4 +1,4 @@
-# Aether Atproto Core
+# Aether AT Proto Core
 
 Common shared modules for the Aether AT Proto library
 
