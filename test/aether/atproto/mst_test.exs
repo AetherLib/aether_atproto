@@ -145,8 +145,6 @@ defmodule Aether.ATProto.MSTCoverageTest do
     end
 
     test "comprehensive test with 10k keys" do
-      IO.puts("\nTesting 10k keys to exercise byte counting logic...")
-
       keys =
         for i <- 1..10_000 do
           "comprehensive_#{i}_#{:rand.uniform(1_000_000_000)}"
@@ -160,8 +158,6 @@ defmodule Aether.ATProto.MSTCoverageTest do
       # Check we have variety
       unique = Enum.uniq(depths)
       assert length(unique) > 5
-
-      IO.puts("Found #{length(unique)} unique depth values")
     end
   end
 
