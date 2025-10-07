@@ -1,4 +1,4 @@
-defmodule AetherATProtoCore.DIDFixtures do
+defmodule Aether.ATProto.DIDFixtures do
   @moduledoc """
   Test fixtures for DID testing.
   """
