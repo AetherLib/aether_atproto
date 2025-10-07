@@ -47,8 +47,8 @@ defmodule AetherATProtoCore.CID do
            multibase: "base58btc"
          }}
 
-      # CIDv1 - Multibase encoded (usually base32)
-      String.starts_with?(cid_string, @cid_v1_base32_prefix) ->
+      # CIDv1 - Base32 encoded (must have proper base32 characters after 'b')
+      String.starts_with?(cid_string, @cid_v1_base32_prefix) and valid_base32_cid?(cid_string) ->
         {:ok,
          %__MODULE__{
            version: 1,
@@ -57,8 +57,8 @@ defmodule AetherATProtoCore.CID do
            multibase: "base32"
          }}
 
-      # CIDv1 - Base58BTC encoded
-      String.starts_with?(cid_string, @cid_v1_base58_prefix) ->
+      # CIDv1 - Base58BTC encoded (must have proper base58 characters after 'z')
+      String.starts_with?(cid_string, @cid_v1_base58_prefix) and valid_base58_cid?(cid_string) ->
         {:ok,
          %__MODULE__{
            version: 1,
@@ -70,6 +70,24 @@ defmodule AetherATProtoCore.CID do
       true ->
         {:error, :invalid_format}
     end
+  end
+
+  # Helper function to validate CIDv1 base32 format
+  defp valid_base32_cid?(cid_string) do
+    # Must be longer than just the prefix
+    # Rest of string should be valid base32 characters (a-z2-7)
+    byte_size(cid_string) > 1 and
+      String.match?(String.slice(cid_string, 1..-1//1), ~r/^[a-z2-7]+$/)
+  end
+
+  # Helper function to validate CIDv1 base58 format
+  defp valid_base58_cid?(cid_string) do
+    # Must be longer than just the prefix
+    # Get substring starting after the prefix
+    byte_size(cid_string) > 1 and
+      String.slice(cid_string, 1..-1//1)
+      # Use a more permissive base58 regex that allows all common base58 characters
+      |> String.match?(~r/^[1-9A-Za-z]*$/)
   end
 
   def parse_cid!(cid_string) when is_binary(cid_string) do

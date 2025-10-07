@@ -240,8 +240,6 @@ defmodule AetherATProtoCore.MST do
     8 + count_leading_zeros(rest)
   end
 
-  defp count_leading_zeros(<<>>), do: 0
-
   defp count_leading_zeros_in_byte(byte) do
     # Count leading zeros in a single byte
     cond do
@@ -253,7 +251,6 @@ defmodule AetherATProtoCore.MST do
       byte >= 4 -> 5
       byte >= 2 -> 6
       byte >= 1 -> 7
-      true -> 8
     end
   end
 end

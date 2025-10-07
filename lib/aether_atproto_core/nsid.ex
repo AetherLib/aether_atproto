@@ -290,7 +290,7 @@ defmodule AetherATProtoCore.NSID do
     authority = Enum.join(segments, ".")
 
     with :ok <- validate_authority_length(authority),
-         :ok <- validate_authority_segment_count(segments),
+         # Removed the redundant validate_authority_segment_count call
          :ok <- validate_first_authority_segment(List.first(segments)),
          :ok <- validate_all_authority_segments(segments) do
       :ok
@@ -301,11 +301,6 @@ defmodule AetherATProtoCore.NSID do
     do: {:error, :authority_too_long}
 
   defp validate_authority_length(_authority), do: :ok
-
-  defp validate_authority_segment_count(segments) when length(segments) < 2,
-    do: {:error, :authority_too_few_segments}
-
-  defp validate_authority_segment_count(_segments), do: :ok
 
   defp validate_first_authority_segment(segment) do
     case segment do
