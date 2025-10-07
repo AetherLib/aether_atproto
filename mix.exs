@@ -13,11 +13,11 @@ defmodule AetherAtprotoCore.MixProject do
           "Josh Chernoff <hello@fullstack.ing>"
         ],
         licenses: ["Apache-2.0"],
-        links: %{"Gitea" => "https://gitea.fullstack.ing/Aether/aether_atproto"},
+        links: %{"github" => "https://github.com/AetherLib/aether_atproto"},
         files: ~w(lib mix.exs README.md)
       ],
       # docs: docs(),
-      homepage_url: "https://gitea.fullstack.ing/Aether/aether_atproto",
+      homepage_url: "https://aetherlib.org",
       description: """
       Aether AT Proto Core is common shared logic to implement the AT Protocol.
       """,
