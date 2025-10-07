@@ -10,7 +10,7 @@ by adding `aether_atproto_core` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:aether_atproto_core, "~> 0.1.0"}
+    {:aether_atproto, "~> 0.1.0"}
   ]
 end
 ```

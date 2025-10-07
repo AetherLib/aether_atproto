@@ -1,29 +1,25 @@
 defmodule AetherAtprotoCore.MixProject do
   use Mix.Project
-  @version "0.1.0"
-  @scm_url "https://gitea.fullstack.ing/Aether/aether_atproto_core"
-  @elixir_requirement "~> 1.18"
 
   def project do
     [
-      app: :aether_atproto_core,
+      app: :aether_atproto,
       start_permanent: Mix.env() == :prod,
-      version: @version,
-      elixir: @elixir_requirement,
+      version: "0.1.0",
+      elixir: "~> 1.18",
       deps: deps(),
       package: [
         maintainers: [
-          "Josh Chernoff"
+          "Josh Chernoff <hello@fullstack.ing>"
         ],
         licenses: ["Apache-2.0"],
         links: %{"Gitea" => @scm_url},
         files: ~w(lib mix.exs README.md)
       ],
-      source_url: @scm_url,
       # docs: docs(),
-      homepage_url: "https://gitea.fullstack.ing/FullStack.ing/aether",
+      homepage_url: "https://gitea.fullstack.ing/Aether/aether_atproto",
       description: """
-      Aether AT Proto Core is common shared logic for use in other libs that implement the AT Protocol.
+      Aether AT Proto Core is common shared logic to implement the AT Protocol.
       """,
       elixirc_paths: elixirc_paths(Mix.env()),
       compilers: Mix.compilers()
