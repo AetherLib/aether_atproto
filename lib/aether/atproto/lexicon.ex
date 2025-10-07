@@ -11,7 +11,7 @@ defmodule Aether.ATProto.Lexicon do
   ## Usage
 
       # Load a lexicon schema from JSON
-      {:ok, lexicon} = Aether.Lexicon.load_schema(json_string)
+      {:ok, lexicon} = Aether.ATProto.Lexicon.load_schema(json_string)
 
       # Validate data against a schema
       data = %{
@@ -19,7 +19,7 @@ defmodule Aether.ATProto.Lexicon do
         "createdAt" => "2024-01-15T12:00:00Z"
       }
 
-      case Aether.Lexicon.validate(lexicon, data) do
+      case Aether.ATProto.Lexicon.validate(lexicon, data) do
         {:ok, validated_data} -> # Data is valid
         {:error, errors} -> # Validation failed
       end
@@ -74,13 +74,13 @@ defmodule Aether.ATProto.Lexicon do
         "required" => ["text", "createdAt"]
       }
 
-      lexicon = %Aether.Lexicon{
+      lexicon = %Aether.ATProto.Lexicon{
         nsid: "app.bsky.feed.post",
         definition: schema
       }
 
       # Validate data
-      Aether.Lexicon.validate(lexicon, %{
+      Aether.ATProto.Lexicon.validate(lexicon, %{
         "text" => "Hello!",
         "createdAt" => "2024-01-15T12:00:00Z"
       })
@@ -107,7 +107,7 @@ defmodule Aether.ATProto.Lexicon do
   ## Examples
 
       iex> json = ~s({"lexicon": 1, "id": "app.bsky.feed.post", "defs": {"main": {"type": "record"}}})
-      iex> {:ok, lexicon} = Aether.Lexicon.load_schema(json)
+      iex> {:ok, lexicon} = Aether.ATProto.Lexicon.load_schema(json)
       iex> lexicon.nsid
       "app.bsky.feed.post"
   """
@@ -125,7 +125,7 @@ defmodule Aether.ATProto.Lexicon do
   ## Examples
 
       iex> schema = %{"lexicon" => 1, "id" => "com.example.post", "defs" => %{"main" => %{"type" => "record"}}}
-      iex> {:ok, lexicon} = Aether.Lexicon.load_schema_map(schema)
+      iex> {:ok, lexicon} = Aether.ATProto.Lexicon.load_schema_map(schema)
       iex> lexicon.nsid
       "com.example.post"
   """
@@ -142,7 +142,7 @@ defmodule Aether.ATProto.Lexicon do
 
   ## Examples
 
-      iex> lexicon = %Aether.Lexicon{
+      iex> lexicon = %Aether.ATProto.Lexicon{
       ...>   definition: %{
       ...>     "type" => "object",
       ...>     "properties" => %{
@@ -151,10 +151,10 @@ defmodule Aether.ATProto.Lexicon do
       ...>     "required" => ["text"]
       ...>   }
       ...> }
-      iex> Aether.Lexicon.validate(lexicon, %{"text" => "Hello!"})
+      iex> Aether.ATProto.Lexicon.validate(lexicon, %{"text" => "Hello!"})
       {:ok, %{"text" => "Hello!"}}
 
-      iex> lexicon = %Aether.Lexicon{
+      iex> lexicon = %Aether.ATProto.Lexicon{
       ...>   definition: %{
       ...>     "type" => "object",
       ...>     "properties" => %{
@@ -163,7 +163,7 @@ defmodule Aether.ATProto.Lexicon do
       ...>     "required" => ["text"]
       ...>   }
       ...> }
-      iex> Aether.Lexicon.validate(lexicon, %{"text" => "Hello!"})
+      iex> Aether.ATProto.Lexicon.validate(lexicon, %{"text" => "Hello!"})
       {:error, [%{path: ["text"], message: "string length 6 exceeds maximum 3"}]}
   """
   @spec validate(t(), term()) :: {:ok, term()} | {:error, [validation_error()]}

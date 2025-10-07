@@ -13,7 +13,7 @@ defmodule AetherAtprotoCore.MixProject do
           "Josh Chernoff <hello@fullstack.ing>"
         ],
         licenses: ["Apache-2.0"],
-        links: %{"Gitea" => @scm_url},
+        links: %{"Gitea" => "https://gitea.fullstack.ing/Aether/aether_atproto"},
         files: ~w(lib mix.exs README.md)
       ],
       # docs: docs(),
