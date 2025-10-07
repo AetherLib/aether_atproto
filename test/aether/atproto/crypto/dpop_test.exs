@@ -147,10 +147,6 @@ defmodule Aether.ATProto.Crypto.DPoPTest do
     end
   end
 
-  # ============================================================================
-  # NEW TESTS FOR VERIFICATION FUNCTIONS
-  # ============================================================================
-
   describe "verify_proof/4" do
     setup do
       key = DPoP.generate_key()
