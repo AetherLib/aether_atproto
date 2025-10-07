@@ -28,4 +28,19 @@ defmodule Aether.ATProto.Crypto.PKCE do
       code_challenge_method: "S256"
     }
   end
+
+  @doc """
+  Verify PKCE code_verifier matches the stored code_challenge.
+  """
+  def verify_pkce(code_verifier, code_challenge) do
+    computed_challenge =
+      :crypto.hash(:sha256, code_verifier)
+      |> Base.url_encode64(padding: false)
+
+    if computed_challenge == code_challenge do
+      :ok
+    else
+      {:error, :invalid_grant}
+    end
+  end
 end
