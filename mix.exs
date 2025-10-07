@@ -44,7 +44,8 @@ defmodule AetherAtprotoCore.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:jason, "~> 1.4", only: :test, runtime: false},
+      {:req, "~> 0.5.15"},
+      {:jason, "~> 1.4"},
       {:joken, "~> 2.6"},
       {:jose, "~> 1.11"},
       {:cbor, "~> 1.0"},
