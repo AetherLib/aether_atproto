@@ -326,6 +326,55 @@ defmodule Aether.ATProto.CID do
       {:error, _} -> {:error, :invalid_cid}
     end
   end
+
+  @doc """
+  Generate a CIDv1 from binary data using SHA-256 hash.
+
+  ## Examples
+
+      iex> data = "hello world"
+      iex> Aether.ATProto.CID.from_data(data)
+      "bafyreifzjut3te2nhyekklss27nh3k72ysco7y32koao5eei66wof36n5e"
+  """
+  def from_data(data, codec \\ "dag-cbor") when is_binary(data) do
+    # Hash the data
+    hash = :crypto.hash(:sha256, data)
+
+    # For CIDv1 with dag-cbor codec, the multicodec prefix is 0x71
+    # and SHA-256 multihash code is 0x12
+    # Multihash format: <hash_function_code><digest_length><digest_bytes>
+    multihash = <<0x12, 32>> <> hash
+
+    # CIDv1 format: <version><codec><multihash>
+    cid_bytes = <<0x01>> <> codec_to_bytes(codec) <> multihash
+
+    # Base32 encode (lowercase, no padding)
+    encoded = Base.encode32(cid_bytes, case: :lower, padding: false)
+
+    # Add base32 multibase prefix
+    "b" <> encoded
+  end
+
+  defp codec_to_bytes("dag-cbor"), do: <<0x71>>
+  defp codec_to_bytes("dag-pb"), do: <<0x70>>
+  defp codec_to_bytes("raw"), do: <<0x55>>
+  # Default to dag-cbor
+  defp codec_to_bytes(_), do: <<0x71>>
+
+  @doc """
+  Generate a CIDv1 from a map by encoding it to CBOR first.
+
+  ## Examples
+
+      iex> data = %{"hello" => "world"}
+      iex> cid = Aether.ATProto.CID.from_map(data)
+      iex> String.starts_with?(cid, "bafyrei")
+      true
+  """
+  def from_map(map) when is_map(map) do
+    cbor_data = CBOR.encode(map)
+    from_data(cbor_data, "dag-cbor")
+  end
 end
 
 # CBOR Encoder implementation for CID
