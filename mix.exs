@@ -5,7 +5,7 @@ defmodule AetherAtprotoCore.MixProject do
     [
       app: :aether_atproto,
       start_permanent: Mix.env() == :prod,
-      version: "0.1.3",
+      version: "0.1.4",
       elixir: "~> 1.18",
       deps: deps(),
       package: [

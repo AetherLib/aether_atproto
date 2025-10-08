@@ -186,9 +186,9 @@ defmodule Aether.ATProto.Crypto.DPoPTest do
       key1 = DPoP.generate_key()
       proof = DPoP.generate_proof(method, url, key1)
 
-      # Tamper with the proof by changing a character
+      # Tamper with the proof by appending to signature
       [header, payload, signature] = String.split(proof, ".")
-      tampered_signature = String.replace(signature, "A", "B", global: false)
+      tampered_signature = signature <> "x"
       tampered_proof = Enum.join([header, payload, tampered_signature], ".")
 
       assert {:error, :invalid_signature} = DPoP.verify_proof(tampered_proof, method, url)

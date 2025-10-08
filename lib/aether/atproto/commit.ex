@@ -96,27 +96,38 @@ defmodule Aether.ATProto.Commit do
   @doc """
   Get the CID for this commit.
 
-  Computes a content-addressed identifier for the commit.
-  In a full implementation, this would hash the DAG-CBOR representation.
-  For now, this is a simplified version.
+  Computes a content-addressed identifier for the commit by encoding it as DAG-CBOR
+  and hashing with SHA-256.
 
   ## Examples
 
       iex> mst_cid = Aether.ATProto.CID.parse_cid!("bafyreie5cvv4h45feadgeuwhbcutmh6t2ceseocckahdoe6uat64zmz454")
       iex> commit = Aether.ATProto.Commit.create("did:plc:abc123", mst_cid)
       iex> cid = Aether.ATProto.Commit.cid(commit)
-      iex> %Aether.ATProto.CID{} = cid
+      iex> String.starts_with?(Aether.ATProto.CID.cid_to_string(cid), "bafyrei")
+      true
   """
   @spec cid(t()) :: CID.t()
   def cid(%__MODULE__{} = commit) do
-    # Simplified CID generation
-    # In production, this would:
-    # 1. Encode commit as DAG-CBOR
-    # 2. Hash with SHA-256
-    # 3. Create CID with multicodec prefix
-    hash_input = "#{commit.did}#{commit.rev}#{CID.cid_to_string(commit.data)}"
-    hash = :crypto.hash(:sha256, hash_input) |> Base.encode32(case: :lower, padding: false)
-    CID.new(1, "dag-cbor", "b" <> hash)
+    # Encode commit as CBOR for content addressing
+    commit_map = %{
+      did: commit.did,
+      version: commit.version,
+      # CID will be encoded by CBOR.Encoder
+      data: commit.data,
+      rev: commit.rev,
+      prev: commit.prev
+    }
+
+    # Encode to CBOR
+    cbor_bytes = CBOR.encode(commit_map)
+
+    # Generate proper CIDv1
+    cid_string = CID.from_data(cbor_bytes, "dag-cbor")
+
+    # Parse back to CID struct
+    {:ok, cid} = CID.parse_cid(cid_string)
+    cid
   end
 
   @doc """
