@@ -1,20 +1,16 @@
-# Aether AT Proto Core
+# Aether ATProto
+This is lib for common and shared modules for implementing the AT Protocol in elixir.
 
-Common shared modules for the Aether AT Proto library
 
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `aether_atproto_core` to your list of dependencies in `mix.exs`:
+by adding `aether_atproto` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:aether_atproto, "~> 0.1.0"}
+    {:aether_atproto, "~> 0.1.5"}
   ]
 end
 ```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/aether_atproto_core>.
