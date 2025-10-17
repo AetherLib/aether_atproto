@@ -74,14 +74,14 @@ defmodule Aether.ATProto.Crypto.DPoP do
   Verifies a DPoP proof JWT (server-side validation).
 
   ## Parameters
-  - dpop_jwt: The DPoP proof JWT from the client
-  - method: Expected HTTP method (e.g., "POST")
-  - url: Expected target URL
-  - access_token: Optional access token to verify ath claim
+  * dpop_jwt: The DPoP proof JWT from the client
+  * method: Expected HTTP method (e.g., "POST")
+  * url: Expected target URL
+  * access_token: Optional access token to verify ath claim
 
   ## Returns
-  - {:ok, dpop_key} - The JWK from the proof if valid
-  - {:error, reason} - If verification fails
+  * `{:ok, dpop_key}` - The JWK from the proof if valid
+  * `{:error, reason}` - If verification fails
   """
   def verify_proof(dpop_jwt, method, url, access_token \\ nil) do
     with {:ok, header, claims} <- decode_and_parse(dpop_jwt),

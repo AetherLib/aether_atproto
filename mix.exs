@@ -51,7 +51,7 @@ defmodule AetherAtprotoCore.MixProject do
 
   defp docs do
     [
-      main: "Aether ATProto",
+      main: "Aether",
       source_ref: "v#{@version}",
       source_url: "https://github.com/AetherLib/aether_atproto",
       extras: extras(),
