@@ -1,2 +1,0 @@
-defmodule Aether do
-end

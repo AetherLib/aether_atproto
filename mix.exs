@@ -1,6 +1,6 @@
 defmodule AetherAtprotoCore.MixProject do
   use Mix.Project
-  @version "0.1.4"
+  @version "0.1.5"
   def project do
     [
       app: :aether_atproto,
@@ -51,7 +51,7 @@ defmodule AetherAtprotoCore.MixProject do
 
   defp docs do
     [
-      main: "Aether",
+      main: "Aether.ATProto",
       source_ref: "v#{@version}",
       source_url: "https://github.com/AetherLib/aether_atproto",
       extras: extras(),
