@@ -8,6 +8,8 @@ defmodule Aether.ATProto.DID do
   - key: Key-based DID method
   """
 
+  alias Aether.Crypto
+
   defstruct [:method, :identifier, :fragment, :query, :params]
 
   @type t :: %__MODULE__{
@@ -29,7 +31,6 @@ defmodule Aether.ATProto.DID do
   @plc_pattern ~r/^[a-z2-7]{24}$/
   @web_domain_pattern ~r/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
   @web_pattern ~r/^[a-zA-Z0-9.-]+(:[a-zA-Z0-9.-]+)*$/
-  @key_pattern ~r/^z[1-9A-HJ-NP-Za-km-z]+$/
 
   @doc """
   Parse a DID string into structured data.
@@ -131,7 +132,17 @@ defmodule Aether.ATProto.DID do
     end
   end
 
-  defp validate_identifier("key", identifier), do: validate_pattern(identifier, @key_pattern)
+  # Use Crypto.DID module to validate did:key format
+  defp validate_identifier("key", identifier) do
+    try do
+      # This will validate the multikey format and parse it
+      Crypto.DID.parse_multikey(identifier)
+      :ok
+    rescue
+      _ -> {:error, :invalid_identifier}
+    end
+  end
+
   defp validate_identifier(_, _), do: {:error, :invalid_method}
 
   defp validate_pattern(string, pattern) do
@@ -324,6 +335,50 @@ defmodule Aether.ATProto.DID do
   end
 
   @doc """
+  Parse and validate a did:key to extract cryptographic information.
+
+  ## Examples
+
+      iex> {:ok, did} = Aether.ATProto.DID.parse_did("did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme")
+      iex> Aether.ATProto.DID.parse_did_key(did)
+      {:ok, %{jwt_alg: "ES256", key_bytes: <<...>>}}
+
+      iex> Aether.ATProto.DID.parse_did_key("did:web:example.com")
+      {:error, :not_did_key}
+  """
+  def parse_did_key(%__MODULE__{method: "key", identifier: identifier}) do
+    try do
+      parsed = Crypto.DID.parse_multikey(identifier)
+      {:ok, parsed}
+    rescue
+      error -> {:error, error}
+    end
+  end
+
+  def parse_did_key(%__MODULE__{method: _other}) do
+    {:error, :not_did_key}
+  end
+
+  def parse_did_key(did_string) when is_binary(did_string) do
+    case parse_did(did_string) do
+      {:ok, did} -> parse_did_key(did)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Create a did:key from cryptographic key material.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.create_did_key("ES256", key_bytes)
+      "did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme"
+  """
+  def create_did_key(jwt_alg, key_bytes) when is_binary(key_bytes) do
+    Crypto.DID.format_did_key(jwt_alg, key_bytes)
+  end
+
+  @doc """
   Check if a DID method is supported.
 
   ## Examples
@@ -358,6 +413,9 @@ defmodule Aether.ATProto.DID do
 
       iex> Aether.ATProto.DID.normalize("DID:WEB:EXAMPLE.COM?VERSION=1#KEY1")
       "did:web:example.com?VERSION=1#KEY1"
+
+      iex> Aether.ATProto.DID.normalize("DID:KEY:ZQ3SHOKFTS3BRHCDQRN82RUDFCZESWL1ZDCEJWEKUDPQIYBME")
+      "did:key:ZQ3SHOKFTS3BRHCDQRN82RUDFCZESWL1ZDCEJWEKUDPQIYBME"
   """
   def normalize(did_string) when is_binary(did_string) do
     case parse_did(did_string) do
@@ -367,10 +425,34 @@ defmodule Aether.ATProto.DID do
   end
 
   defp normalize_valid_did(original, %__MODULE__{method: method, identifier: identifier}) do
-    ["did", String.downcase(method), String.downcase(identifier)]
+    normalized_method = String.downcase(method)
+
+    # Normalize identifier based on method
+    normalized_identifier =
+      case method do
+        "plc" -> String.downcase(identifier)
+        "web" -> normalize_web_identifier(identifier)
+        # did:key identifiers are case-sensitive
+        "key" -> identifier
+        _ -> identifier
+      end
+
+    ["did", normalized_method, normalized_identifier]
     |> Enum.join(":")
     |> append_query(extract_query(original))
     |> append_fragment(extract_fragment(original))
+  end
+
+  defp normalize_web_identifier(identifier) do
+    # For web DIDs, only the domain part should be lowercased
+    parts = String.split(identifier, ":")
+    [domain | path_parts] = parts
+    normalized_domain = String.downcase(domain)
+
+    case path_parts do
+      [] -> normalized_domain
+      _ -> [normalized_domain | path_parts] |> Enum.join(":")
+    end
   end
 
   defp normalize_invalid_did(did_string) do
@@ -380,31 +462,15 @@ defmodule Aether.ATProto.DID do
         String.downcase(String.slice(did_string, 0..3)) <> String.slice(did_string, 4..-1//1)
 
       case String.split(rest, ["?", "#"], parts: 2) do
-        [method_and_id, _rest_parts] ->
+        [method_and_id, rest_parts] ->
           separator = if String.contains?(did_string, "?"), do: "?", else: "#"
-          # Extract original query/fragment
-          original_rest_parts = extract_after_separator(did_string, separator)
-          build_normalized_did(String.downcase(method_and_id), separator, original_rest_parts)
+          build_normalized_did(String.downcase(method_and_id), separator, rest_parts)
 
         [method_and_id] ->
           build_normalized_did(String.downcase(method_and_id), nil, nil)
       end
     else
       did_string
-    end
-  end
-
-  defp extract_after_separator(string, "?") do
-    case String.split(string, "?", parts: 2) do
-      [_, rest] -> rest
-      _ -> ""
-    end
-  end
-
-  defp extract_after_separator(string, "#") do
-    case String.split(string, "#", parts: 2) do
-      [_, rest] -> rest
-      _ -> ""
     end
   end
 
