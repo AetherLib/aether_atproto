@@ -1,4 +1,4 @@
-defmodule Aether.ATProto.Crypto.DPoP do
+defmodule Aether.Crypto.DPoP do
   @moduledoc """
   DPoP (Demonstrating Proof of Possession) implementation for AT Protocol OAuth.
 
