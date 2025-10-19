@@ -24,51 +24,27 @@ defmodule Aether.Crypto.DID do
   Parses a multikey string and returns the JWT algorithm and decompressed key bytes.
   """
   def parse_multikey(multikey) when is_binary(multikey) do
-    prefixed_bytes = extract_prefixed_bytes(multikey)
-
-    cond do
-      has_prefix(prefixed_bytes, @p256_did_prefix) ->
-        key_bytes =
-          prefixed_bytes
-          |> binary_part(
-            byte_size(@p256_did_prefix),
-            byte_size(prefixed_bytes) - byte_size(@p256_did_prefix)
-          )
-          |> Crypto.P256.decompress_pubkey()
-
-        %{jwt_alg: @p256_jwt_alg, key_bytes: key_bytes}
-
-      has_prefix(prefixed_bytes, @secp256k1_did_prefix) ->
-        key_bytes =
-          prefixed_bytes
-          |> binary_part(
-            byte_size(@secp256k1_did_prefix),
-            byte_size(prefixed_bytes) - byte_size(@secp256k1_did_prefix)
-          )
-          |> Crypto.SECP256K1.decompress_pubkey()
-
-        %{jwt_alg: @secp256k1_jwt_alg, key_bytes: key_bytes}
-
-      true ->
-        raise ArgumentError, "Unsupported key type"
-    end
+    multikey
+    |> extract_prefixed_bytes()
+    |> parse_prefixed_bytes()
   end
 
   @doc """
   Formats key bytes and JWT algorithm into a multikey string.
   """
   def format_multikey(jwt_alg, key_bytes) when is_binary(key_bytes) do
-    {prefix, compress_fn} =
-      case jwt_alg do
-        @p256_jwt_alg -> {@p256_did_prefix, &Crypto.P256.compress_pubkey/1}
-        @secp256k1_jwt_alg -> {@secp256k1_did_prefix, &Crypto.SECP256K1.compress_pubkey/1}
-        _ -> raise ArgumentError, "Unsupported key type"
-      end
+    case jwt_alg do
+      @p256_jwt_alg ->
+        compressed_key = Crypto.P256.compress_pubkey(key_bytes)
+        @base58_multibase_prefix <> Base58.encode(@p256_did_prefix <> compressed_key)
 
-    compressed_key = compress_fn.(key_bytes)
-    prefixed_bytes = prefix <> compressed_key
+      @secp256k1_jwt_alg ->
+        compressed_key = Crypto.SECP256K1.compress_pubkey(key_bytes)
+        @base58_multibase_prefix <> Base58.encode(@secp256k1_did_prefix <> compressed_key)
 
-    @base58_multibase_prefix <> Base58.encode(prefixed_bytes)
+      _ ->
+        raise ArgumentError, "Unsupported key type"
+    end
   end
 
   @doc """
@@ -87,33 +63,28 @@ defmodule Aether.Crypto.DID do
     @did_key_prefix <> format_multikey(jwt_alg, key_bytes)
   end
 
-  # Private helper functions
+  # Private helper functions with pattern matching
 
-  defp extract_multikey(did) when is_binary(did) do
-    if String.starts_with?(did, @did_key_prefix) do
-      String.slice(did, String.length(@did_key_prefix)..-1)
-    else
-      raise ArgumentError, "Incorrect prefix for did:key: #{did}"
-    end
+  defp parse_prefixed_bytes(<<@p256_did_prefix::binary, key_bytes::binary>>) do
+    %{jwt_alg: @p256_jwt_alg, key_bytes: Crypto.P256.decompress_pubkey(key_bytes)}
   end
 
-  defp extract_prefixed_bytes(multikey) when is_binary(multikey) do
-    if String.starts_with?(multikey, @base58_multibase_prefix) do
-      multikey
-      |> String.slice(String.length(@base58_multibase_prefix)..-1)
-      |> Base58.decode()
-    else
-      raise ArgumentError, "Incorrect prefix for multikey: #{multikey}"
-    end
+  defp parse_prefixed_bytes(<<@secp256k1_did_prefix::binary, key_bytes::binary>>) do
+    %{jwt_alg: @secp256k1_jwt_alg, key_bytes: Crypto.SECP256K1.decompress_pubkey(key_bytes)}
   end
 
-  defp has_prefix(bytes, prefix) when is_binary(bytes) and is_binary(prefix) do
-    prefix_size = byte_size(prefix)
+  defp parse_prefixed_bytes(_prefixed_bytes) do
+    raise ArgumentError, "Unsupported key type"
+  end
 
-    if byte_size(bytes) >= prefix_size do
-      binary_part(bytes, 0, prefix_size) == prefix
-    else
-      false
-    end
+  defp extract_multikey(<<@did_key_prefix::binary, multikey::binary>>), do: multikey
+  defp extract_multikey(did), do: raise(ArgumentError, "Incorrect prefix for did:key: #{did}")
+
+  defp extract_prefixed_bytes(<<@base58_multibase_prefix::binary, multikey::binary>>) do
+    Base58.decode(multikey)
+  end
+
+  defp extract_prefixed_bytes(multikey) do
+    raise(ArgumentError, "Incorrect prefix for multikey: #{multikey}")
   end
 end
