@@ -1,6 +1,8 @@
 # Aether ATProto
-This is lib for common and shared modules for implementing the AT Protocol in elixir.
+[![CI](https://github.com/AetherLib/aether_atproto/actions/workflows/ci.yml/badge.svg)](https://github.com/AetherLib/aether_atproto/actions/workflows/ci.yml)
+https://aetherlib.org
 
+This is lib for common and shared modules for implementing the AT Protocol in elixir.
 
 ## Installation
 
