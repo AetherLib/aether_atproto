@@ -1,4 +1,4 @@
-defmodule Aether.ATProto.Crypto.PKCE do
+defmodule Aether.Crypto.PKCE do
   @moduledoc """
   PKCE (Proof Key for Code Exchange) implementation for OAuth 2.1.
 
