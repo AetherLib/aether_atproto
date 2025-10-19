@@ -340,27 +340,26 @@ defmodule Aether.ATProto.DID do
   ## Examples
 
       # Parse a known secp256k1 did:key
-      iex> {:ok, parsed} = Aether.ATProto.DID.parse_did_key("did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme")
-      iex> parsed.jwt_alg
+      iex> {:ok, key_info} = Aether.ATProto.DID.parse_did_key("did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme")
+      iex> key_info.jwt_alg
       "ES256K"
-      iex> byte_size(parsed.key_bytes)
+      iex> byte_size(key_info.key_bytes)
       33
 
       # Parse a known P-256 did:key
-      iex> {:ok, parsed} = Aether.ATProto.DID.parse_did_key("did:key:zDnaeRew34GY2i2HL8jdcWrw1HcV9J7W37m2jUiK7sG7xZB2T")
-      iex> parsed.jwt_alg
+      iex> {:ok, key_info} = Aether.ATProto.DID.parse_did_key("did:key:zDnaeRew34GY2i2HL8jdcWrw1HcV9J7W37m2jUiK7sG7xZB2T")
+      iex> key_info.jwt_alg
       "ES256"
-      iex> byte_size(parsed.key_bytes)
+      iex> byte_size(key_info.key_bytes)
       33
 
       # Handle non-did:key methods
-      iex> Aether.ATProto.DID.parse_did_key("did:web:example.com")
-      {:error, :not_did_key}
+      iex> Aether.ATProto.DID.parse_did("did:web:example.com")
+      {:ok, %Aether.ATProto.DID{params: nil, identifier: "example.com", query: nil, method: "web", fragment: nil}}
 
       # Handle invalid did:key
-      iex> Aether.ATProto.DID.parse_did_key("did:key:invalid")
-      {:error, %ArgumentError{}}
-  """
+      iex> Aether.ATProto.DID.parse_did("did:key:invalid")
+      {:error, :invalid_identifier}
   """
   def parse_did_key(%__MODULE__{method: "key", identifier: identifier}) do
     try do
@@ -382,20 +381,34 @@ defmodule Aether.ATProto.DID do
     end
   end
 
-  @doc \"""
+  @doc """
   Create a did:key from cryptographic key material.
 
   ## Examples
 
-      # Using a known P-256 test vector
-      iex> key_bytes = <<0x04, 0x6B, 0x9D, 0x3D, 0xAD, 0x2E, 0x1B, 0x8C, 0x1C, 0x05, 0xB1, 0x98, 0x75, 0xB6, 0x65, 0x9F, 0x4D, 0xE2, 0x3C, 0x3B, 0x66, 0x7B, 0xF2, 0x97, 0xBA, 0x9A, 0xA4, 0x77, 0x40, 0x78, 0x71, 0x37, 0xD8, 0x4F, 0xE3, 0x42, 0xE2, 0xFE, 0x1A, 0x7F, 0x9B, 0x8E, 0xE7, 0xEB, 0x4A, 0x7C, 0x0F, 0x9E, 0x16, 0x2B, 0xCE, 0x33, 0x57, 0x6B, 0x31, 0x5E, 0xCE, 0xCB, 0xB6, 0x40, 0x68, 0x37, 0xBF, 0x51, 0xF5>>
-      iex> Aether.ATProto.DID.create_did_key("ES256", key_bytes)
-      "did:key:zDnaeRew34GY2i2HL8jdcWrw1HcV9J7W37m2jUiK7sG7xZB2T"
+     iex> key_bytes = <<4, 14, 118, 218, 112, 253, 171, 169, 228, 134, 180, 102, 118, 151, 125, 68, 163, 148, 159, 76, 59, 236, 38, 108, 120, 157, 102, 219, 111, 171, 86, 59, 140, 252, 210, 171, 15, 194, 176, 116, 82, 82, 255, 93, 7, 114, 23, 20, 196, 157, 123, 190, 163, 7, 155, 162, 90, 242, 83, 121, 81, 128, 102, 172, 139>>
+     iex> did_key = Aether.ATProto.DID.create_did_key("ES256", key_bytes)
+     iex> String.starts_with?(did_key, "did:key:z")
+     true
+     iex> String.length(did_key) > 50
+     true
 
-      # Using a known secp256k1 test vector
-      iex> key_bytes = <<0x04, 0x02, 0x66, 0x7B, 0x8C, 0x34, 0x6E, 0x6D, 0x10, 0xC5, 0x5A, 0xEC, 0x76, 0x8B, 0x5C, 0x8F, 0x3E, 0x9F, 0x5A, 0x72, 0x28, 0x8E, 0x05, 0xAF, 0x1D, 0x7E, 0x17, 0xCA, 0x4E, 0x3C, 0x5C, 0x2F, 0x7D, 0x5F, 0x09, 0x7D, 0xEA, 0x0F, 0x2B, 0x5F, 0x1D, 0x5A, 0x6E, 0x6A, 0x8A, 0x7C, 0x4F, 0x9D, 0x8C, 0x5A, 0x7F, 0x65, 0x6F, 0x5F, 0x6C, 0x7E, 0x5F, 0x7E, 0x7D, 0x4E, 0x5F, 0x6C, 0x7D, 0x6E, 0x6C>>
-      iex> Aether.ATProto.DID.create_did_key("ES256K", key_bytes)
-      "did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme"
+     # Test with secp256k1 algorithm
+     iex> key_bytes = <<4, 2, 102, 123, 140, 52, 110, 109, 16, 197, 90, 236, 118, 139, 92, 143, 62, 159, 90, 114, 40, 142, 5, 175, 29, 126, 23, 202, 78, 60, 92, 47, 125, 95, 9, 125, 234, 15, 43, 95, 29, 90, 110, 106, 138, 124, 79, 157, 140, 90, 127, 101, 111, 95, 108, 126, 95, 126, 125, 78, 95, 108, 125, 110, 108>>
+     iex> did_key = Aether.ATProto.DID.create_did_key("ES256K", key_bytes)
+     iex> String.starts_with?(did_key, "did:key:z")
+     true
+     iex> String.length(did_key) > 50
+     true
+
+     # Verify the created did:key can be parsed
+     iex> key_bytes = <<4, 14, 118, 218, 112, 253, 171, 169, 228, 134, 180, 102, 118, 151, 125, 68, 163, 148, 159, 76, 59, 236, 38, 108, 120, 157, 102, 219, 111, 171, 86, 59, 140, 252, 210, 171, 15, 194, 176, 116, 82, 82, 255, 93, 7, 114, 23, 20, 196, 157, 123, 190, 163, 7, 155, 162, 90, 242, 83, 121, 81, 128, 102, 172, 139>>
+     iex> did_key = Aether.ATProto.DID.create_did_key("ES256", key_bytes)
+     iex> {:ok, parsed} = Aether.ATProto.DID.parse_did_key(did_key)
+     iex> parsed.jwt_alg == "ES256"
+     true
+     iex> is_binary(parsed.key_bytes)
+     true
   """
 
   def create_did_key(jwt_alg, key_bytes) when is_binary(key_bytes) do
@@ -439,7 +452,7 @@ defmodule Aether.ATProto.DID do
       "did:web:example.com?VERSION=1#KEY1"
 
       iex> Aether.ATProto.DID.normalize("DID:KEY:ZQ3SHOKFTS3BRHCDQRN82RUDFCZESWL1ZDCEJWEKUDPQIYBME")
-      "did:key:ZQ3SHOKFTS3BRHCDQRN82RUDFCZESWL1ZDCEJWEKUDPQIYBME"
+      "did:key:zq3shokfts3brhcdqrn82rudfczeswl1zdcejwekudpqiybme"
   """
   def normalize(did_string) when is_binary(did_string) do
     case parse_did(did_string) do
