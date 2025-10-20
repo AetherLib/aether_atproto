@@ -15,7 +15,7 @@ defmodule Aether.ATProto.DID.Document.Client do
   """
   @spec resolve(String.t()) :: {:ok, Document.t()} | {:error, term()}
   def resolve(did_string) when is_binary(did_string) do
-    case DID.parse_did(did_string) do
+    case DID.parse(did_string) do
       {:ok, %{method: "plc"}} -> resolve_plc(did_string)
       {:ok, %{method: "web"}} -> resolve_web(did_string)
       {:ok, %{method: method}} -> {:error, {:unsupported_method, method}}

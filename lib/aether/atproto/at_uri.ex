@@ -314,7 +314,7 @@ defmodule Aether.ATProto.AtUri do
   end
 
   defp validate_did_authority(did) do
-    case DID.parse_did(did) do
+    case DID.parse(did) do
       {:ok, _} -> :ok
       {:error, _} -> {:error, :invalid_did}
     end

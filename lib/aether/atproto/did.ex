@@ -1,13 +1,16 @@
 defmodule Aether.ATProto.DID do
   @moduledoc """
-  Decentralized Identifier (DID) handling for ATProto.
+  ATProto-specific DID handling built on W3C-compliant core.
 
   Supports DID methods commonly used in ATProto networks including:
   - plc: Placeholder DID method
   - web: Web-based DID method
   - key: Key-based DID method
+
+  Extends core DID validation with ATProto ecosystem features.
   """
 
+  alias Aether.DID
   alias Aether.Crypto
 
   defstruct [:method, :identifier, :fragment, :query, :params]
@@ -27,39 +30,339 @@ defmodule Aether.ATProto.DID do
   # Supported DID methods in ATProto
   @supported_methods ["plc", "web", "key"]
 
-  # Regex patterns for validation
+  # Regex patterns for ATProto-specific validation
   @plc_pattern ~r/^[a-z2-7]{24}$/
   @web_domain_pattern ~r/^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
   @web_pattern ~r/^[a-zA-Z0-9.-]+(:[a-zA-Z0-9.-]+)*$/
 
   @doc """
-  Parse a DID string into structured data.
+  Parse a DID string with ATProto extensions (fragments, queries, method-specific validation).
 
   ## Examples
 
-      iex> Aether.ATProto.DID.parse_did("did:plc:z72i7hdynmk24r6zlsdc6nxd")
+      iex> Aether.ATProto.DID.parse("did:plc:z72i7hdynmk24r6zlsdc6nxd")
       {:ok, %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"}}
 
-      iex> Aether.ATProto.DID.parse_did("did:web:example.com")
-      {:ok, %Aether.ATProto.DID{method: "web", identifier: "example.com"}}
+      iex> Aether.ATProto.DID.parse("did:web:example.com#fragment")
+      {:ok, %Aether.ATProto.DID{method: "web", identifier: "example.com", fragment: "fragment"}}
 
-      iex> Aether.ATProto.DID.parse_did("did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme")
-      {:ok, %Aether.ATProto.DID{method: "key", identifier: "zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme"}}
-
-      iex> Aether.ATProto.DID.parse_did("did:web:example.com:user#fragment")
-      {:ok, %Aether.ATProto.DID{method: "web", identifier: "example.com:user", fragment: "fragment"}}
+      iex> Aether.ATProto.DID.parse("did:invalid:example")
+      {:error, :unsupported_method}
   """
-  def parse_did("did:" <> rest) when is_binary(rest) do
+  @spec parse(String.t()) :: {:ok, t} | {:error, atom() | String.t()}
+  def parse("did:" <> rest) when is_binary(rest) do
     with [method_raw, rest_with_identifier] <- String.split(rest, ":", parts: 2),
          method = String.downcase(method_raw),
+         {:ok, core_did} <-
+           DID.parse("did:" <> method_raw <> ":" <> extract_base_identifier(rest_with_identifier)),
          {identifier, fragment, query, params} <- parse_identifier_parts(rest_with_identifier) do
-      validate_did(method, identifier, fragment, query, params)
+      validate_atproto_did(method, identifier, fragment, query, params, core_did)
     else
+      {:error, reason} when is_binary(reason) -> {:error, reason}
       _ -> {:error, :invalid_format}
     end
   end
 
-  def parse_did(_invalid), do: {:error, :invalid_format}
+  def parse(_invalid), do: {:error, :invalid_format}
+
+  @doc """
+  Parse a DID string, raising an exception on error.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.parse!("did:plc:z72i7hdynmk24r6zlsdc6nxd")
+      %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"}
+
+      iex> Aether.ATProto.DID.parse!("invalid")
+      ** (Aether.ATProto.DID.ParseError) Invalid DID: invalid_format
+  """
+  @spec parse!(any) :: t | no_return
+  def parse!(did_string) when is_binary(did_string) do
+    case parse(did_string) do
+      {:ok, did} -> did
+      {:error, reason} -> raise ParseError, "Invalid DID: #{reason}"
+    end
+  end
+
+  def parse!(%__MODULE__{} = did), do: did
+  def parse!(_other), do: raise(ParseError, "Invalid DID: invalid_format")
+
+  @doc """
+  Check if a value is a valid ATProto DID.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.valid?("did:plc:z72i7hdynmk24r6zlsdc6nxd")
+      true
+
+      iex> Aether.ATProto.DID.valid?("did:invalid:example")
+      false
+
+      iex> Aether.ATProto.DID.valid?(%Aether.ATProto.DID{method: "plc", identifier: "test"})
+      true
+  """
+  @spec valid?(any) :: boolean
+  def valid?(did_string) when is_binary(did_string) do
+    match?({:ok, _}, parse(did_string))
+  end
+
+  def valid?(%__MODULE__{}), do: true
+  def valid?(_), do: false
+
+  @doc """
+  Convert a DID struct back to its string representation.
+
+  ## Examples
+
+      iex> did = %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"}
+      iex> Aether.ATProto.DID.to_string(did)
+      "did:plc:z72i7hdynmk24r6zlsdc6nxd"
+
+      iex> did = %Aether.ATProto.DID{method: "web", identifier: "example.com", fragment: "key1"}
+      iex> Aether.ATProto.DID.to_string(did)
+      "did:web:example.com#key1"
+  """
+  @spec to_string(t) :: String.t()
+  def to_string(%__MODULE__{
+        method: method,
+        identifier: identifier,
+        query: query,
+        fragment: fragment
+      }) do
+    ["did", method, identifier]
+    |> Enum.join(":")
+    |> append_query(query)
+    |> append_fragment(fragment)
+  end
+
+  def to_string(did_string) when is_binary(did_string), do: did_string
+
+  @doc """
+  Extract the method from a DID.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.method("did:plc:z72i7hdynmk24r6zlsdc6nxd")
+      "plc"
+
+      iex> Aether.ATProto.DID.method("did:web:example.com")
+      "web"
+  """
+  @spec method(t | String.t()) :: String.t() | {:error, atom}
+  def method(%__MODULE__{method: method}), do: method
+
+  def method(did_string) when is_binary(did_string) do
+    case parse(did_string) do
+      {:ok, %__MODULE__{method: method}} -> method
+      {:error, _} -> {:error, :invalid_did}
+    end
+  end
+
+  @doc """
+  Extract the identifier from a DID.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.identifier("did:plc:z72i7hdynmk24r6zlsdc6nxd")
+      "z72i7hdynmk24r6zlsdc6nxd"
+
+      iex> Aether.ATProto.DID.identifier("invalid")
+      {:error, :invalid_did}
+  """
+  @spec identifier(t | String.t()) :: String.t() | {:error, atom}
+  def identifier(%__MODULE__{identifier: identifier}), do: identifier
+
+  def identifier(did_string) when is_binary(did_string) do
+    case parse(did_string) do
+      {:ok, %__MODULE__{identifier: identifier}} -> identifier
+      {:error, _} -> {:error, :invalid_did}
+    end
+  end
+
+  @doc """
+  Check if a DID uses a specific method.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.is_method?("did:plc:z72i7hdynmk24r6zlsdc6nxd", "plc")
+      true
+
+      iex> Aether.ATProto.DID.is_method?("did:web:example.com", "plc")
+      false
+  """
+  @spec is_method?(t | String.t(), String.t()) :: boolean
+  def is_method?(%__MODULE__{method: method}, expected_method), do: method == expected_method
+
+  def is_method?(did_string, expected_method)
+      when is_binary(did_string) and is_binary(expected_method) do
+    method(did_string) == expected_method
+  end
+
+  def is_method?(_, _), do: false
+
+  @doc """
+  Get the fragment from a DID.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.fragment("did:web:example.com#key1")
+      "key1"
+
+      iex> Aether.ATProto.DID.fragment("did:web:example.com")
+      nil
+  """
+  @spec fragment(t | String.t()) :: String.t() | nil | {:error, atom}
+  def fragment(%__MODULE__{fragment: fragment}), do: fragment
+
+  def fragment(did_string) when is_binary(did_string) do
+    case parse(did_string) do
+      {:ok, %__MODULE__{fragment: fragment}} -> fragment
+      {:error, _} -> {:error, :invalid_did}
+    end
+  end
+
+  @doc """
+  Get query parameters from a DID.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.params("did:web:example.com?version=1&test=true")
+      %{"version" => "1", "test" => "true"}
+
+      iex> Aether.ATProto.DID.params("did:web:example.com")
+      nil
+  """
+  @spec params(t | String.t()) :: map() | nil | {:error, atom}
+  def params(%__MODULE__{params: params}), do: params
+
+  def params(did_string) when is_binary(did_string) do
+    case parse(did_string) do
+      {:ok, %__MODULE__{params: params}} -> params
+      {:error, _} -> {:error, :invalid_did}
+    end
+  end
+
+  @doc """
+  Parse and validate a did:key to extract cryptographic information.
+
+  ## Examples
+
+      iex> {:ok, key_info} = Aether.ATProto.DID.parse_key("did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme")
+      iex> key_info.jwt_alg
+      "ES256K"
+  """
+  @spec parse_key(t | String.t()) :: {:ok, map()} | {:error, atom}
+  def parse_key(%__MODULE__{method: "key", identifier: identifier}) do
+    try do
+      parsed = Crypto.DID.parse_multikey(identifier)
+      {:ok, parsed}
+    rescue
+      _error -> {:error, :invalid_key}
+    end
+  end
+
+  def parse_key(%__MODULE__{method: _other}), do: {:error, :not_did_key}
+
+  def parse_key(did_string) when is_binary(did_string) do
+    case parse(did_string) do
+      {:ok, did} -> parse_key(did)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Create a did:key from cryptographic key material.
+
+  ## Examples
+
+      iex> key_bytes = <<4, 14, 118, 218, 112, 253, 171, 169, 228, 134, 180, 102, 118, 151, 125, 68, 163, 148, 159, 76, 59, 236, 38, 108, 120, 157, 102, 219, 111, 171, 86, 59, 140, 252, 210, 171, 15, 194, 176, 116, 82, 82, 255, 93, 7, 114, 23, 20, 196, 157, 123, 190, 163, 7, 155, 162, 90, 242, 83, 121, 81, 128, 102, 172, 139>>
+      iex> did_key = Aether.ATProto.DID.create_key("ES256", key_bytes)
+      iex> String.starts_with?(did_key, "did:key:z")
+      true
+  """
+  @spec create_key(String.t(), binary()) :: String.t()
+  def create_key(jwt_alg, key_bytes) when is_binary(key_bytes) do
+    Crypto.DID.format_did_key(jwt_alg, key_bytes)
+  end
+
+  @doc """
+  Check if a DID method is supported by ATProto.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.supported_method?("plc")
+      true
+
+      iex> Aether.ATProto.DID.supported_method?("unsupported")
+      false
+  """
+  @spec supported_method?(String.t()) :: boolean
+  def supported_method?(method) when is_binary(method) do
+    method in @supported_methods
+  end
+
+  @doc """
+  Get all supported DID methods.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.supported_methods()
+      ["plc", "web", "key"]
+  """
+  @spec supported_methods() :: list(String.t())
+  def supported_methods, do: @supported_methods
+
+  @doc """
+  Normalize a DID string (convert to lowercase for certain methods).
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.normalize("DID:PLC:Z72I7HDYNMK24R6ZLSDC6NXD")
+      "did:plc:z72i7hdynmk24r6zlsdc6nxd"
+
+      iex> Aether.ATProto.DID.normalize("DID:WEB:EXAMPLE.COM?VERSION=1#KEY1")
+      "did:web:example.com?VERSION=1#KEY1"
+  """
+  @spec normalize(String.t()) :: String.t()
+  def normalize(did_string) when is_binary(did_string) do
+    case parse(did_string) do
+      {:ok, did} -> normalize_valid_did(did_string, did)
+      {:error, _} -> normalize_invalid_did(did_string)
+    end
+  end
+
+  @doc """
+  Extract the web domain from a web DID.
+
+  ## Examples
+
+      iex> Aether.ATProto.DID.web_domain("did:web:example.com:path")
+      "example.com"
+
+      iex> Aether.ATProto.DID.web_domain("did:plc:z72i7hdynmk24r6zlsdc6nxd")
+      {:error, :not_web_did}
+  """
+  @spec web_domain(t | String.t()) :: String.t() | {:error, atom}
+  def web_domain(%__MODULE__{method: "web", identifier: identifier}),
+    do: extract_domain(identifier)
+
+  def web_domain(%__MODULE__{}), do: {:error, :not_web_did}
+
+  def web_domain(did_string) when is_binary(did_string) do
+    case parse(did_string) do
+      {:ok, %__MODULE__{method: "web", identifier: identifier}} -> extract_domain(identifier)
+      {:ok, %__MODULE__{}} -> {:error, :not_web_did}
+      {:error, _} -> {:error, :invalid_did}
+    end
+  end
+
+  # Private implementation
+
+  defp extract_base_identifier(rest_with_identifier) do
+    rest_with_identifier
+    |> String.split(["#", "?"])
+    |> List.first()
+  end
 
   defp parse_identifier_parts(rest) do
     {identifier_with_params, fragment} = split_fragment(rest)
@@ -96,7 +399,7 @@ defmodule Aether.ATProto.DID do
     end)
   end
 
-  defp validate_did(method, identifier, fragment, query, params) do
+  defp validate_atproto_did(method, identifier, fragment, query, params, _core_did) do
     with :ok <- validate_method(method),
          :ok <- validate_identifier(method, identifier) do
       {:ok,
@@ -113,14 +416,12 @@ defmodule Aether.ATProto.DID do
   defp validate_method(method) when method in @supported_methods, do: :ok
   defp validate_method(_method), do: {:error, :unsupported_method}
 
-  # Allow uppercase PLC DIDs but normalize to lowercase
   defp validate_identifier("plc", identifier) do
     identifier
     |> String.downcase()
     |> validate_pattern(@plc_pattern)
   end
 
-  # For web DIDs, the identifier can be a domain or domain with path segments separated by colons
   defp validate_identifier("web", identifier) do
     with [domain | _] <- String.split(identifier, ":"),
          true <- String.match?(identifier, @web_pattern),
@@ -132,10 +433,8 @@ defmodule Aether.ATProto.DID do
     end
   end
 
-  # Use Crypto.DID module to validate did:key format
   defp validate_identifier("key", identifier) do
     try do
-      # This will validate the multikey format and parse it
       Crypto.DID.parse_multikey(identifier)
       :ok
     rescue
@@ -149,327 +448,19 @@ defmodule Aether.ATProto.DID do
     if String.match?(string, pattern), do: :ok, else: {:error, :invalid_identifier}
   end
 
-  @doc """
-  Parse a DID string, raising an exception on error.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.parse_did!("did:plc:z72i7hdynmk24r6zlsdc6nxd")
-      %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"}
-
-      iex> Aether.ATProto.DID.parse_did!("invalid")
-      ** (Aether.ATProto.DID.ParseError) Invalid DID: invalid_format
-  """
-  def parse_did!(did_string) when is_binary(did_string) do
-    case parse_did(did_string) do
-      {:ok, did} -> did
-      {:error, reason} -> raise ParseError, "Invalid DID: #{reason}"
-    end
-  end
-
-  def parse_did!(%__MODULE__{} = did), do: did
-  def parse_did!(_other), do: raise(ParseError, "Invalid DID: invalid_format")
-
-  @doc """
-  Check if a value is a valid DID.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.valid_did?("did:plc:z72i7hdynmk24r6zlsdc6nxd")
-      true
-
-      iex> Aether.ATProto.DID.valid_did?("invalid")
-      false
-
-      iex> Aether.ATProto.DID.valid_did?(%Aether.ATProto.DID{method: "plc", identifier: "test"})
-      true
-  """
-  def valid_did?(did_string) when is_binary(did_string) do
-    match?({:ok, _}, parse_did(did_string))
-  end
-
-  def valid_did?(%__MODULE__{}), do: true
-  def valid_did?(_), do: false
-
-  @doc """
-  Convert a DID struct back to its string representation.
-
-  ## Examples
-
-      iex> did = %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"}
-      iex> Aether.ATProto.DID.did_to_string(did)
-      "did:plc:z72i7hdynmk24r6zlsdc6nxd"
-
-      iex> did = %Aether.ATProto.DID{method: "web", identifier: "example.com", fragment: "key1"}
-      iex> Aether.ATProto.DID.did_to_string(did)
-      "did:web:example.com#key1"
-
-      iex> did = %Aether.ATProto.DID{method: "web", identifier: "example.com", query: "version=1", fragment: "key1"}
-      iex> Aether.ATProto.DID.did_to_string(did)
-      "did:web:example.com?version=1#key1"
-  """
-  def did_to_string(%__MODULE__{
-        method: method,
-        identifier: identifier,
-        query: query,
-        fragment: fragment
-      }) do
-    ["did", method, identifier]
-    |> Enum.join(":")
-    |> append_query(query)
-    |> append_fragment(fragment)
-  end
-
-  def did_to_string(did_string) when is_binary(did_string), do: did_string
-
   defp append_query(string, nil), do: string
   defp append_query(string, query), do: string <> "?" <> query
 
   defp append_fragment(string, nil), do: string
   defp append_fragment(string, fragment), do: string <> "#" <> fragment
 
-  @doc """
-  Extract the method from a DID.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.did_method("did:plc:z72i7hdynmk24r6zlsdc6nxd")
-      "plc"
-
-      iex> Aether.ATProto.DID.did_method("did:web:example.com")
-      "web"
-
-      iex> Aether.ATProto.DID.did_method("invalid")
-      {:error, :invalid_did}
-  """
-  def did_method(%__MODULE__{method: method}), do: method
-
-  def did_method(did_string) when is_binary(did_string) do
-    case parse_did(did_string) do
-      {:ok, %__MODULE__{method: method}} -> method
-      {:error, _} -> {:error, :invalid_did}
-    end
-  end
-
-  @doc """
-  Extract the identifier from a DID.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.did_identifier("did:plc:z72i7hdynmk24r6zlsdc6nxd")
-      "z72i7hdynmk24r6zlsdc6nxd"
-
-      iex> Aether.ATProto.DID.did_identifier("invalid")
-      {:error, :invalid_did}
-  """
-  def did_identifier(%__MODULE__{identifier: identifier}), do: identifier
-
-  def did_identifier(did_string) when is_binary(did_string) do
-    case parse_did(did_string) do
-      {:ok, %__MODULE__{identifier: identifier}} -> identifier
-      {:error, _} -> {:error, :invalid_did}
-    end
-  end
-
-  @doc """
-  Check if a DID uses a specific method.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.is_method?("did:plc:z72i7hdynmk24r6zlsdc6nxd", "plc")
-      true
-
-      iex> Aether.ATProto.DID.is_method?("did:web:example.com", "plc")
-      false
-
-      iex> Aether.ATProto.DID.is_method?("invalid", "plc")
-      false
-  """
-  def is_method?(%__MODULE__{method: method}, expected_method), do: method == expected_method
-
-  def is_method?(did_string, expected_method)
-      when is_binary(did_string) and is_binary(expected_method) do
-    did_method(did_string) == expected_method
-  end
-
-  def is_method?(_, _), do: false
-
-  @doc """
-  Get the fragment from a DID.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.did_fragment("did:web:example.com#key1")
-      "key1"
-
-      iex> Aether.ATProto.DID.did_fragment("did:web:example.com")
-      nil
-  """
-  def did_fragment(%__MODULE__{fragment: fragment}), do: fragment
-
-  def did_fragment(did_string) when is_binary(did_string) do
-    case parse_did(did_string) do
-      {:ok, %__MODULE__{fragment: fragment}} -> fragment
-      {:error, _} -> {:error, :invalid_did}
-    end
-  end
-
-  @doc """
-  Get query parameters from a DID.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.did_params("did:web:example.com?version=1&test=true")
-      %{"version" => "1", "test" => "true"}
-
-      iex> Aether.ATProto.DID.did_params("did:web:example.com")
-      nil
-  """
-  def did_params(%__MODULE__{params: params}), do: params
-
-  def did_params(did_string) when is_binary(did_string) do
-    case parse_did(did_string) do
-      {:ok, %__MODULE__{params: params}} -> params
-      {:error, _} -> {:error, :invalid_did}
-    end
-  end
-
-  @doc """
-  Parse and validate a did:key to extract cryptographic information.
-
-  ## Examples
-
-      # Parse a known secp256k1 did:key
-      iex> {:ok, key_info} = Aether.ATProto.DID.parse_did_key("did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme")
-      iex> key_info.jwt_alg
-      "ES256K"
-      iex> byte_size(key_info.key_bytes)
-      33
-
-      # Parse a known P-256 did:key
-      iex> {:ok, key_info} = Aether.ATProto.DID.parse_did_key("did:key:zDnaeRew34GY2i2HL8jdcWrw1HcV9J7W37m2jUiK7sG7xZB2T")
-      iex> key_info.jwt_alg
-      "ES256"
-      iex> byte_size(key_info.key_bytes)
-      33
-
-      # Handle non-did:key methods
-      iex> Aether.ATProto.DID.parse_did("did:web:example.com")
-      {:ok, %Aether.ATProto.DID{params: nil, identifier: "example.com", query: nil, method: "web", fragment: nil}}
-
-      # Handle invalid did:key
-      iex> Aether.ATProto.DID.parse_did("did:key:invalid")
-      {:error, :invalid_identifier}
-  """
-  def parse_did_key(%__MODULE__{method: "key", identifier: identifier}) do
-    try do
-      parsed = Crypto.DID.parse_multikey(identifier)
-      {:ok, parsed}
-    rescue
-      error -> {:error, error}
-    end
-  end
-
-  def parse_did_key(%__MODULE__{method: _other}) do
-    {:error, :not_did_key}
-  end
-
-  def parse_did_key(did_string) when is_binary(did_string) do
-    case parse_did(did_string) do
-      {:ok, did} -> parse_did_key(did)
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  @doc """
-  Create a did:key from cryptographic key material.
-
-  ## Examples
-
-     iex> key_bytes = <<4, 14, 118, 218, 112, 253, 171, 169, 228, 134, 180, 102, 118, 151, 125, 68, 163, 148, 159, 76, 59, 236, 38, 108, 120, 157, 102, 219, 111, 171, 86, 59, 140, 252, 210, 171, 15, 194, 176, 116, 82, 82, 255, 93, 7, 114, 23, 20, 196, 157, 123, 190, 163, 7, 155, 162, 90, 242, 83, 121, 81, 128, 102, 172, 139>>
-     iex> did_key = Aether.ATProto.DID.create_did_key("ES256", key_bytes)
-     iex> String.starts_with?(did_key, "did:key:z")
-     true
-     iex> String.length(did_key) > 50
-     true
-
-     # Test with secp256k1 algorithm
-     iex> key_bytes = <<4, 2, 102, 123, 140, 52, 110, 109, 16, 197, 90, 236, 118, 139, 92, 143, 62, 159, 90, 114, 40, 142, 5, 175, 29, 126, 23, 202, 78, 60, 92, 47, 125, 95, 9, 125, 234, 15, 43, 95, 29, 90, 110, 106, 138, 124, 79, 157, 140, 90, 127, 101, 111, 95, 108, 126, 95, 126, 125, 78, 95, 108, 125, 110, 108>>
-     iex> did_key = Aether.ATProto.DID.create_did_key("ES256K", key_bytes)
-     iex> String.starts_with?(did_key, "did:key:z")
-     true
-     iex> String.length(did_key) > 50
-     true
-
-     # Verify the created did:key can be parsed
-     iex> key_bytes = <<4, 14, 118, 218, 112, 253, 171, 169, 228, 134, 180, 102, 118, 151, 125, 68, 163, 148, 159, 76, 59, 236, 38, 108, 120, 157, 102, 219, 111, 171, 86, 59, 140, 252, 210, 171, 15, 194, 176, 116, 82, 82, 255, 93, 7, 114, 23, 20, 196, 157, 123, 190, 163, 7, 155, 162, 90, 242, 83, 121, 81, 128, 102, 172, 139>>
-     iex> did_key = Aether.ATProto.DID.create_did_key("ES256", key_bytes)
-     iex> {:ok, parsed} = Aether.ATProto.DID.parse_did_key(did_key)
-     iex> parsed.jwt_alg == "ES256"
-     true
-     iex> is_binary(parsed.key_bytes)
-     true
-  """
-
-  def create_did_key(jwt_alg, key_bytes) when is_binary(key_bytes) do
-    Crypto.DID.format_did_key(jwt_alg, key_bytes)
-  end
-
-  @doc """
-  Check if a DID method is supported.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.supported_method?("plc")
-      true
-
-      iex> Aether.ATProto.DID.supported_method?("unsupported")
-      false
-  """
-  def supported_method?(method) when is_binary(method) do
-    method in @supported_methods
-  end
-
-  @doc """
-  Get all supported DID methods.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.supported_methods()
-      ["plc", "web", "key"]
-  """
-  def supported_methods, do: @supported_methods
-
-  @doc """
-  Normalize a DID string (convert to lowercase for certain methods).
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.normalize("DID:PLC:Z72I7HDYNMK24R6ZLSDC6NXD")
-      "did:plc:z72i7hdynmk24r6zlsdc6nxd"
-
-      iex> Aether.ATProto.DID.normalize("DID:WEB:EXAMPLE.COM?VERSION=1#KEY1")
-      "did:web:example.com?VERSION=1#KEY1"
-
-      iex> Aether.ATProto.DID.normalize("DID:KEY:ZQ3SHOKFTS3BRHCDQRN82RUDFCZESWL1ZDCEJWEKUDPQIYBME")
-      "did:key:zq3shokfts3brhcdqrn82rudfczeswl1zdcejwekudpqiybme"
-  """
-  def normalize(did_string) when is_binary(did_string) do
-    case parse_did(did_string) do
-      {:ok, did} -> normalize_valid_did(did_string, did)
-      {:error, _} -> normalize_invalid_did(did_string)
-    end
-  end
-
   defp normalize_valid_did(original, %__MODULE__{method: method, identifier: identifier}) do
     normalized_method = String.downcase(method)
 
-    # Normalize identifier based on method
     normalized_identifier =
       case method do
         "plc" -> String.downcase(identifier)
         "web" -> normalize_web_identifier(identifier)
-        # did:key identifiers are case-sensitive
         "key" -> identifier
         _ -> identifier
       end
@@ -481,7 +472,6 @@ defmodule Aether.ATProto.DID do
   end
 
   defp normalize_web_identifier(identifier) do
-    # For web DIDs, only the domain part should be lowercased
     parts = String.split(identifier, ":")
     [domain | path_parts] = parts
     normalized_domain = String.downcase(domain)
@@ -494,7 +484,6 @@ defmodule Aether.ATProto.DID do
 
   defp normalize_invalid_did(did_string) do
     if String.starts_with?(String.downcase(did_string), "did:") do
-      # Extract the DID prefix and rest
       <<"did:", rest::binary>> =
         String.downcase(String.slice(did_string, 0..3)) <> String.slice(did_string, 4..-1//1)
 
@@ -539,30 +528,6 @@ defmodule Aether.ATProto.DID do
     case String.split(did_string, "#", parts: 2) do
       [_, fragment] -> fragment
       _ -> nil
-    end
-  end
-
-  @doc """
-  Extract the web domain from a web DID.
-
-  ## Examples
-
-      iex> Aether.ATProto.DID.web_domain("did:web:example.com:path")
-      "example.com"
-
-      iex> Aether.ATProto.DID.web_domain("did:plc:z72i7hdynmk24r6zlsdc6nxd")
-      {:error, :not_web_did}
-  """
-  def web_domain(%__MODULE__{method: "web", identifier: identifier}),
-    do: extract_domain(identifier)
-
-  def web_domain(%__MODULE__{}), do: {:error, :not_web_did}
-
-  def web_domain(did_string) when is_binary(did_string) do
-    case parse_did(did_string) do
-      {:ok, %__MODULE__{method: "web", identifier: identifier}} -> extract_domain(identifier)
-      {:ok, %__MODULE__{}} -> {:error, :not_web_did}
-      {:error, _} -> {:error, :invalid_did}
     end
   end
 

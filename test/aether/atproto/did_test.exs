@@ -8,65 +8,65 @@ defmodule Aether.ATProto.DIDTest do
     test "parses valid PLC DID" do
       did_string = plc_did()
 
-      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse_did(did_string)
+      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse(did_string)
 
       assert {:ok, %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"}} =
-               Aether.ATProto.DID.parse_did(did_string)
+               Aether.ATProto.DID.parse(did_string)
     end
 
     test "parses valid Web DID" do
       did_string = web_did()
 
-      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse_did(did_string)
+      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse(did_string)
 
       assert {:ok, %Aether.ATProto.DID{method: "web", identifier: "example.com"}} =
-               Aether.ATProto.DID.parse_did(did_string)
+               Aether.ATProto.DID.parse(did_string)
     end
 
     test "parses valid Web DID with port" do
       did_string = web_did_with_port()
 
-      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse_did(did_string)
+      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse(did_string)
 
       assert {:ok, %Aether.ATProto.DID{method: "web", identifier: "example.com:3000"}} =
-               Aether.ATProto.DID.parse_did(did_string)
+               Aether.ATProto.DID.parse(did_string)
     end
 
     test "parses valid Web DID with path" do
       did_string = "did:web:example.com:user"
 
-      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse_did(did_string)
+      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse(did_string)
 
       assert {:ok, %Aether.ATProto.DID{method: "web", identifier: "example.com:user"}} =
-               Aether.ATProto.DID.parse_did(did_string)
+               Aether.ATProto.DID.parse(did_string)
     end
 
     test "parses valid Key DID" do
       did_string = key_did()
 
-      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse_did(did_string)
+      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse(did_string)
 
       assert {:ok,
               %Aether.ATProto.DID{
                 method: "key",
                 identifier: "zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme"
-              }} = Aether.ATProto.DID.parse_did(did_string)
+              }} = Aether.ATProto.DID.parse(did_string)
     end
 
     test "parses DID with fragment" do
       did_string = web_did_with_fragment()
 
-      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse_did(did_string)
+      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse(did_string)
 
       assert {:ok,
               %Aether.ATProto.DID{method: "web", identifier: "example.com", fragment: "key1"}} =
-               Aether.ATProto.DID.parse_did(did_string)
+               Aether.ATProto.DID.parse(did_string)
     end
 
     test "parses DID with query parameters" do
       did_string = web_did_with_query()
 
-      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse_did(did_string)
+      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse(did_string)
 
       assert {:ok,
               %Aether.ATProto.DID{
@@ -74,13 +74,13 @@ defmodule Aether.ATProto.DIDTest do
                 identifier: "example.com",
                 query: "version=1",
                 params: %{"version" => "1"}
-              }} = Aether.ATProto.DID.parse_did(did_string)
+              }} = Aether.ATProto.DID.parse(did_string)
     end
 
     test "parses DID with fragment and query parameters" do
       did_string = web_did_with_fragment_and_query()
 
-      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse_did(did_string)
+      assert {:ok, %Aether.ATProto.DID{}} = Aether.ATProto.DID.parse(did_string)
 
       assert {:ok,
               %Aether.ATProto.DID{
@@ -89,43 +89,43 @@ defmodule Aether.ATProto.DIDTest do
                 query: "version=1",
                 fragment: "key1",
                 params: %{"version" => "1"}
-              }} = Aether.ATProto.DID.parse_did(did_string)
+              }} = Aether.ATProto.DID.parse(did_string)
     end
 
     test "returns error for invalid DID format" do
       for invalid_did <- invalid_dids() do
-        assert {:error, _} = Aether.ATProto.DID.parse_did(invalid_did)
+        assert {:error, _} = Aether.ATProto.DID.parse(invalid_did)
       end
     end
 
     test "returns error for unsupported method" do
       assert {:error, :unsupported_method} =
-               Aether.ATProto.DID.parse_did("did:unsupported:identifier")
+               Aether.ATProto.DID.parse("did:unsupported:identifier")
     end
 
     test "returns error for invalid PLC identifier" do
       # Too short
-      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse_did("did:plc:abc123")
+      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse("did:plc:abc123")
       # Invalid characters
       assert {:error, :invalid_identifier} =
-               Aether.ATProto.DID.parse_did("did:plc:z72i7hdynmk24r6zlsdc6nxd!")
+               Aether.ATProto.DID.parse("did:plc:z72i7hdynmk24r6zlsdc6nxd!")
     end
 
     test "returns error for invalid Web identifier" do
       # Invalid domain
       assert {:error, :invalid_identifier} =
-               Aether.ATProto.DID.parse_did("did:web:example..com")
+               Aether.ATProto.DID.parse("did:web:example..com")
 
       # Invalid characters
       assert {:error, :invalid_identifier} =
-               Aether.ATProto.DID.parse_did("did:web:example_com")
+               Aether.ATProto.DID.parse("did:web:example_com")
     end
 
     test "returns error for invalid Key identifier" do
       # Doesn't start with z
-      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse_did("did:key:abc123")
+      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse("did:key:abc123")
       # Invalid multibase characters
-      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse_did("did:key:z123!")
+      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse("did:key:z123!")
     end
   end
 
@@ -133,46 +133,46 @@ defmodule Aether.ATProto.DIDTest do
     test "returns DID struct for valid DID" do
       did_string = plc_did()
 
-      did = Aether.ATProto.DID.parse_did!(did_string)
+      did = Aether.ATProto.DID.parse!(did_string)
       assert %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"} = did
     end
 
     test "raises ParseError for invalid DID" do
       assert_raise Aether.ATProto.DID.ParseError, fn ->
-        Aether.ATProto.DID.parse_did!("invalid")
+        Aether.ATProto.DID.parse!("invalid")
       end
 
       assert_raise Aether.ATProto.DID.ParseError, fn ->
-        Aether.ATProto.DID.parse_did!("did:unsupported:test")
+        Aether.ATProto.DID.parse!("did:unsupported:test")
       end
     end
 
     test "returns DID struct when passed a DID struct" do
       did_struct = %Aether.ATProto.DID{method: "plc", identifier: "test"}
-      assert ^did_struct = Aether.ATProto.DID.parse_did!(did_struct)
+      assert ^did_struct = Aether.ATProto.DID.parse!(did_struct)
     end
   end
 
-  describe "valid_did?/1" do
+  describe "valid?/1" do
     test "returns true for valid DID strings" do
-      assert Aether.ATProto.DID.valid_did?(plc_did())
-      assert Aether.ATProto.DID.valid_did?(web_did())
-      assert Aether.ATProto.DID.valid_did?(key_did())
+      assert Aether.ATProto.DID.valid?(plc_did())
+      assert Aether.ATProto.DID.valid?(web_did())
+      assert Aether.ATProto.DID.valid?(key_did())
     end
 
     test "returns true for DID structs" do
       did_struct = %Aether.ATProto.DID{method: "plc", identifier: "test"}
-      assert Aether.ATProto.DID.valid_did?(did_struct)
+      assert Aether.ATProto.DID.valid?(did_struct)
     end
 
     test "returns false for invalid inputs" do
       for invalid_did <- invalid_dids() do
-        refute Aether.ATProto.DID.valid_did?(invalid_did)
+        refute Aether.ATProto.DID.valid?(invalid_did)
       end
 
-      refute Aether.ATProto.DID.valid_did?(nil)
-      refute Aether.ATProto.DID.valid_did?(123)
-      refute Aether.ATProto.DID.valid_did?(%{})
+      refute Aether.ATProto.DID.valid?(nil)
+      refute Aether.ATProto.DID.valid?(123)
+      refute Aether.ATProto.DID.valid?(%{})
     end
   end
 
@@ -180,19 +180,19 @@ defmodule Aether.ATProto.DIDTest do
     test "returns string from DID struct" do
       did = %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"}
 
-      assert Aether.ATProto.DID.did_to_string(did) == "did:plc:z72i7hdynmk24r6zlsdc6nxd"
+      assert Aether.ATProto.DID.to_string(did) == "did:plc:z72i7hdynmk24r6zlsdc6nxd"
     end
 
     test "returns string with fragment" do
       did = %Aether.ATProto.DID{method: "web", identifier: "example.com", fragment: "key1"}
 
-      assert Aether.ATProto.DID.did_to_string(did) == "did:web:example.com#key1"
+      assert Aether.ATProto.DID.to_string(did) == "did:web:example.com#key1"
     end
 
     test "returns string with query parameters" do
       did = %Aether.ATProto.DID{method: "web", identifier: "example.com", query: "version=1"}
 
-      assert Aether.ATProto.DID.did_to_string(did) == "did:web:example.com?version=1"
+      assert Aether.ATProto.DID.to_string(did) == "did:web:example.com?version=1"
     end
 
     test "returns string with both fragment and query" do
@@ -203,45 +203,45 @@ defmodule Aether.ATProto.DIDTest do
         fragment: "key1"
       }
 
-      assert Aether.ATProto.DID.did_to_string(did) == "did:web:example.com?version=1#key1"
+      assert Aether.ATProto.DID.to_string(did) == "did:web:example.com?version=1#key1"
     end
 
     test "returns string when passed a string" do
       did_string = "did:plc:test"
-      assert Aether.ATProto.DID.did_to_string(did_string) == did_string
+      assert Aether.ATProto.DID.to_string(did_string) == did_string
     end
   end
 
-  describe "did_method/1" do
+  describe "method/1" do
     test "returns method for DID strings" do
-      assert Aether.ATProto.DID.did_method(plc_did()) == "plc"
-      assert Aether.ATProto.DID.did_method(web_did()) == "web"
-      assert Aether.ATProto.DID.did_method(key_did()) == "key"
+      assert Aether.ATProto.DID.method(plc_did()) == "plc"
+      assert Aether.ATProto.DID.method(web_did()) == "web"
+      assert Aether.ATProto.DID.method(key_did()) == "key"
     end
 
     test "returns method for DID structs" do
       did = %Aether.ATProto.DID{method: "plc", identifier: "test"}
-      assert Aether.ATProto.DID.did_method(did) == "plc"
+      assert Aether.ATProto.DID.method(did) == "plc"
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.did_method("invalid") == {:error, :invalid_did}
+      assert Aether.ATProto.DID.method("invalid") == {:error, :invalid_did}
     end
   end
 
-  describe "did_identifier/1" do
+  describe "identifier/1" do
     test "returns identifier for DID strings" do
-      assert Aether.ATProto.DID.did_identifier(plc_did()) == "z72i7hdynmk24r6zlsdc6nxd"
-      assert Aether.ATProto.DID.did_identifier(web_did()) == "example.com"
+      assert Aether.ATProto.DID.identifier(plc_did()) == "z72i7hdynmk24r6zlsdc6nxd"
+      assert Aether.ATProto.DID.identifier(web_did()) == "example.com"
     end
 
     test "returns identifier for DID structs" do
       did = %Aether.ATProto.DID{method: "plc", identifier: "test"}
-      assert Aether.ATProto.DID.did_identifier(did) == "test"
+      assert Aether.ATProto.DID.identifier(did) == "test"
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.did_identifier("invalid") == {:error, :invalid_did}
+      assert Aether.ATProto.DID.identifier("invalid") == {:error, :invalid_did}
     end
   end
 
@@ -267,38 +267,38 @@ defmodule Aether.ATProto.DIDTest do
     end
   end
 
-  describe "did_fragment/1" do
+  describe "fragment/1" do
     test "returns fragment for DID strings" do
-      assert Aether.ATProto.DID.did_fragment(web_did_with_fragment()) == "key1"
+      assert Aether.ATProto.DID.fragment(web_did_with_fragment()) == "key1"
     end
 
     test "returns nil for DID without fragment" do
-      assert Aether.ATProto.DID.did_fragment(web_did()) == nil
+      assert Aether.ATProto.DID.fragment(web_did()) == nil
     end
 
     test "returns fragment for DID structs" do
       did = %Aether.ATProto.DID{method: "web", identifier: "example.com", fragment: "key1"}
-      assert Aether.ATProto.DID.did_fragment(did) == "key1"
+      assert Aether.ATProto.DID.fragment(did) == "key1"
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.did_fragment("invalid") == {:error, :invalid_did}
+      assert Aether.ATProto.DID.fragment("invalid") == {:error, :invalid_did}
     end
   end
 
-  describe "did_params/1" do
+  describe "params/1" do
     test "returns params for DID strings" do
-      params = Aether.ATProto.DID.did_params(web_did_with_query())
+      params = Aether.ATProto.DID.params(web_did_with_query())
       assert params == %{"version" => "1"}
     end
 
     test "returns params with boolean values" do
-      params = Aether.ATProto.DID.did_params("did:web:example.com?flag")
+      params = Aether.ATProto.DID.params("did:web:example.com?flag")
       assert params == %{"flag" => true}
     end
 
     test "returns nil for DID without params" do
-      assert Aether.ATProto.DID.did_params(web_did()) == nil
+      assert Aether.ATProto.DID.params(web_did()) == nil
     end
 
     test "returns params for DID structs" do
@@ -308,11 +308,11 @@ defmodule Aether.ATProto.DIDTest do
         params: %{"version" => "1"}
       }
 
-      assert Aether.ATProto.DID.did_params(did) == %{"version" => "1"}
+      assert Aether.ATProto.DID.params(did) == %{"version" => "1"}
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.did_params("invalid") == {:error, :invalid_did}
+      assert Aether.ATProto.DID.params("invalid") == {:error, :invalid_did}
     end
   end
 
@@ -414,12 +414,12 @@ defmodule Aether.ATProto.DIDTest do
       ]
 
       for did <- atproto_dids do
-        assert Aether.ATProto.DID.valid_did?(did)
+        assert Aether.ATProto.DID.valid?(did)
 
-        {:ok, parsed} = Aether.ATProto.DID.parse_did(did)
+        {:ok, parsed} = Aether.ATProto.DID.parse(did)
         assert parsed.method in ["plc", "web", "key"]
         assert is_binary(parsed.identifier)
-        assert Aether.ATProto.DID.did_to_string(parsed) == did
+        assert Aether.ATProto.DID.to_string(parsed) == did
       end
     end
   end
