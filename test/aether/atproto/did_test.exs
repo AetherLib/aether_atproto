@@ -99,33 +99,34 @@ defmodule Aether.ATProto.DIDTest do
     end
 
     test "returns error for unsupported method" do
-      assert {:error, :unsupported_method} =
+      assert {:error, "Unsupported method"} =
                Aether.ATProto.DID.parse("did:unsupported:identifier")
     end
 
     test "returns error for invalid PLC identifier" do
       # Too short
-      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse("did:plc:abc123")
+      assert {:error, "Invalid identifier"} = Aether.ATProto.DID.parse("did:plc:abc123")
       # Invalid characters
-      assert {:error, :invalid_identifier} =
+      assert {:error, "Disallowed character in DID at position 32"} =
                Aether.ATProto.DID.parse("did:plc:z72i7hdynmk24r6zlsdc6nxd!")
     end
 
     test "returns error for invalid Web identifier" do
       # Invalid domain
-      assert {:error, :invalid_identifier} =
+      assert {:error, "Invalid identifier"} =
                Aether.ATProto.DID.parse("did:web:example..com")
 
       # Invalid characters
-      assert {:error, :invalid_identifier} =
+      assert {:error, "Invalid identifier"} =
                Aether.ATProto.DID.parse("did:web:example_com")
     end
 
     test "returns error for invalid Key identifier" do
       # Doesn't start with z
-      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse("did:key:abc123")
+      assert {:error, "Invalid identifier"} = Aether.ATProto.DID.parse("did:key:abc123")
       # Invalid multibase characters
-      assert {:error, :invalid_identifier} = Aether.ATProto.DID.parse("did:key:z123!")
+      assert {:error, "Disallowed character in DID at position 12"} =
+               Aether.ATProto.DID.parse("did:key:z123!")
     end
   end
 
@@ -225,7 +226,7 @@ defmodule Aether.ATProto.DIDTest do
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.method("invalid") == {:error, :invalid_did}
+      assert {:error, "Invalid DID Method"} == Aether.ATProto.DID.method("invalid")
     end
   end
 
@@ -241,7 +242,7 @@ defmodule Aether.ATProto.DIDTest do
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.identifier("invalid") == {:error, :invalid_did}
+      assert {:error, "Invalid DID Identifier"} == Aether.ATProto.DID.identifier("invalid")
     end
   end
 
@@ -282,7 +283,7 @@ defmodule Aether.ATProto.DIDTest do
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.fragment("invalid") == {:error, :invalid_did}
+      assert {:error, "Invalid DID Fragment"} == Aether.ATProto.DID.fragment("invalid")
     end
   end
 
@@ -312,7 +313,7 @@ defmodule Aether.ATProto.DIDTest do
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.params("invalid") == {:error, :invalid_did}
+      assert {:error, "Invalid DID Params"} == Aether.ATProto.DID.params("invalid")
     end
   end
 
@@ -387,11 +388,11 @@ defmodule Aether.ATProto.DIDTest do
     end
 
     test "returns error for non-web DID" do
-      assert Aether.ATProto.DID.web_domain(plc_did()) == {:error, :not_web_did}
+      assert {:error, "Invalid DID Web domain"} == Aether.ATProto.DID.web_domain(plc_did())
     end
 
     test "returns error for invalid DID" do
-      assert Aether.ATProto.DID.web_domain("invalid") == {:error, :invalid_did}
+      assert {:error, "Invalid DID"} == Aether.ATProto.DID.web_domain("invalid")
     end
 
     test "works with DID structs" do
@@ -399,7 +400,7 @@ defmodule Aether.ATProto.DIDTest do
       assert Aether.ATProto.DID.web_domain(did) == "example.com"
 
       plc_did = %Aether.ATProto.DID{method: "plc", identifier: "test"}
-      assert Aether.ATProto.DID.web_domain(plc_did) == {:error, :not_web_did}
+      assert {:error, "Invalid DID Web domain"} == Aether.ATProto.DID.web_domain(plc_did)
     end
   end
 

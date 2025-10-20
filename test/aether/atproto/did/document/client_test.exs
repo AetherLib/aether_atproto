@@ -6,13 +6,13 @@ defmodule Aether.ATProto.DID.Document.ClientTest do
 
   describe "resolve/1 - did:web" do
     test "returns error for invalid DID format" do
-      assert {:error, :invalid_format} = Client.resolve("not a did")
+      assert {:error, "Invalid DID"} = Client.resolve("not a did")
     end
 
     test "returns error for unsupported method" do
       # Note: "did:key:z6Mkfriq..." is invalid because the identifier format is wrong
       # A valid did:key would be something like "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
-      assert {:error, :invalid_identifier} = Client.resolve("did:key:z6Mkfriq...")
+      assert {:error, "Invalid identifier"} = Client.resolve("did:key:z6Mkfriq...")
     end
   end
 
@@ -35,9 +35,9 @@ defmodule Aether.ATProto.DID.Document.ClientTest do
 
   describe "integration with Aether.DID" do
     test "resolve rejects invalid DID format" do
-      assert {:error, :invalid_format} = Client.resolve("not-a-did")
-      assert {:error, :invalid_format} = Client.resolve("did:")
-      assert {:error, :invalid_identifier} = Client.resolve("did:plc:")
+      assert {:error, "Invalid DID"} = Client.resolve("not-a-did")
+      assert {:error, "Invalid DID"} = Client.resolve("did:")
+      assert {:error, "DID method-specific id must not be empty"} = Client.resolve("did:plc:")
     end
   end
 end

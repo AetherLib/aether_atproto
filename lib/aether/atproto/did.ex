@@ -47,9 +47,9 @@ defmodule Aether.ATProto.DID do
       {:ok, %Aether.ATProto.DID{method: "web", identifier: "example.com", fragment: "fragment"}}
 
       iex> Aether.ATProto.DID.parse("did:invalid:example")
-      {:error, :unsupported_method}
+      {:error, "Unsupported method"}
   """
-  @spec parse(String.t()) :: {:ok, t} | {:error, atom() | String.t()}
+  @spec parse(String.t()) :: {:ok, t} | {:error, String.t()}
   def parse("did:" <> rest) when is_binary(rest) do
     with [method_raw, rest_with_identifier] <- String.split(rest, ":", parts: 2),
          method = String.downcase(method_raw),
@@ -59,11 +59,11 @@ defmodule Aether.ATProto.DID do
       validate_atproto_did(method, identifier, fragment, query, params, core_did)
     else
       {:error, reason} when is_binary(reason) -> {:error, reason}
-      _ -> {:error, :invalid_format}
+      _ -> {:error, "Invalid DID"}
     end
   end
 
-  def parse(_invalid), do: {:error, :invalid_format}
+  def parse(_invalid), do: {:error, "Invalid DID"}
 
   @doc """
   Parse a DID string, raising an exception on error.
@@ -74,18 +74,22 @@ defmodule Aether.ATProto.DID do
       %Aether.ATProto.DID{method: "plc", identifier: "z72i7hdynmk24r6zlsdc6nxd"}
 
       iex> Aether.ATProto.DID.parse!("invalid")
-      ** (Aether.ATProto.DID.ParseError) Invalid DID: invalid_format
+      ** (Aether.ATProto.DID.ParseError) Invalid DID
   """
   @spec parse!(any) :: t | no_return
   def parse!(did_string) when is_binary(did_string) do
     case parse(did_string) do
       {:ok, did} -> did
-      {:error, reason} -> raise ParseError, "Invalid DID: #{reason}"
+      {:error, reason} -> raise ParseError, reason
     end
   end
 
   def parse!(%__MODULE__{} = did), do: did
-  def parse!(_other), do: raise(ParseError, "Invalid DID: invalid_format")
+
+  def parse!(other) do
+    dbg(other)
+    raise(ParseError, "Invalid DID")
+  end
 
   @doc """
   Check if a value is a valid ATProto DID.
@@ -148,13 +152,13 @@ defmodule Aether.ATProto.DID do
       iex> Aether.ATProto.DID.method("did:web:example.com")
       "web"
   """
-  @spec method(t | String.t()) :: String.t() | {:error, atom}
+  @spec method(t | String.t()) :: String.t() | {:error, String.t()}
   def method(%__MODULE__{method: method}), do: method
 
   def method(did_string) when is_binary(did_string) do
     case parse(did_string) do
       {:ok, %__MODULE__{method: method}} -> method
-      {:error, _} -> {:error, :invalid_did}
+      {:error, _} -> {:error, "Invalid DID Method"}
     end
   end
 
@@ -167,15 +171,15 @@ defmodule Aether.ATProto.DID do
       "z72i7hdynmk24r6zlsdc6nxd"
 
       iex> Aether.ATProto.DID.identifier("invalid")
-      {:error, :invalid_did}
+      {:error, "Invalid DID Identifier"}
   """
-  @spec identifier(t | String.t()) :: String.t() | {:error, atom}
+  @spec identifier(t | String.t()) :: String.t() | {:error, String.t()}
   def identifier(%__MODULE__{identifier: identifier}), do: identifier
 
   def identifier(did_string) when is_binary(did_string) do
     case parse(did_string) do
       {:ok, %__MODULE__{identifier: identifier}} -> identifier
-      {:error, _} -> {:error, :invalid_did}
+      {:error, _} -> {:error, "Invalid DID Identifier"}
     end
   end
 
@@ -211,13 +215,13 @@ defmodule Aether.ATProto.DID do
       iex> Aether.ATProto.DID.fragment("did:web:example.com")
       nil
   """
-  @spec fragment(t | String.t()) :: String.t() | nil | {:error, atom}
+  @spec fragment(t | String.t()) :: String.t() | nil | {:error, String.t()}
   def fragment(%__MODULE__{fragment: fragment}), do: fragment
 
   def fragment(did_string) when is_binary(did_string) do
     case parse(did_string) do
       {:ok, %__MODULE__{fragment: fragment}} -> fragment
-      {:error, _} -> {:error, :invalid_did}
+      {:error, _} -> {:error, "Invalid DID Fragment"}
     end
   end
 
@@ -232,13 +236,13 @@ defmodule Aether.ATProto.DID do
       iex> Aether.ATProto.DID.params("did:web:example.com")
       nil
   """
-  @spec params(t | String.t()) :: map() | nil | {:error, atom}
+  @spec params(t | String.t()) :: map() | nil | {:error, String.t()}
   def params(%__MODULE__{params: params}), do: params
 
   def params(did_string) when is_binary(did_string) do
     case parse(did_string) do
       {:ok, %__MODULE__{params: params}} -> params
-      {:error, _} -> {:error, :invalid_did}
+      {:error, _} -> {:error, "Invalid DID Params"}
     end
   end
 
@@ -251,7 +255,7 @@ defmodule Aether.ATProto.DID do
       iex> key_info.jwt_alg
       "ES256K"
   """
-  @spec parse_key(t | String.t()) :: {:ok, map()} | {:error, atom}
+  @spec parse_key(t | String.t()) :: {:ok, map()} | {:error, String.t()}
   def parse_key(%__MODULE__{method: "key", identifier: identifier}) do
     try do
       parsed = Crypto.DID.parse_multikey(identifier)
@@ -261,7 +265,7 @@ defmodule Aether.ATProto.DID do
     end
   end
 
-  def parse_key(%__MODULE__{method: _other}), do: {:error, :not_did_key}
+  def parse_key(%__MODULE__{method: _other}), do: {:error, "Invalid DID Key"}
 
   def parse_key(did_string) when is_binary(did_string) do
     case parse(did_string) do
@@ -340,19 +344,19 @@ defmodule Aether.ATProto.DID do
       "example.com"
 
       iex> Aether.ATProto.DID.web_domain("did:plc:z72i7hdynmk24r6zlsdc6nxd")
-      {:error, :not_web_did}
+      {:error, "Invalid DID Web domain"}
   """
-  @spec web_domain(t | String.t()) :: String.t() | {:error, atom}
+  @spec web_domain(t | String.t()) :: String.t() | {:error, String.t()}
   def web_domain(%__MODULE__{method: "web", identifier: identifier}),
     do: extract_domain(identifier)
 
-  def web_domain(%__MODULE__{}), do: {:error, :not_web_did}
+  def web_domain(%__MODULE__{}), do: {:error, "Invalid DID Web domain"}
 
   def web_domain(did_string) when is_binary(did_string) do
     case parse(did_string) do
       {:ok, %__MODULE__{method: "web", identifier: identifier}} -> extract_domain(identifier)
-      {:ok, %__MODULE__{}} -> {:error, :not_web_did}
-      {:error, _} -> {:error, :invalid_did}
+      {:ok, %__MODULE__{}} -> {:error, "Invalid DID Web domain"}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -414,7 +418,7 @@ defmodule Aether.ATProto.DID do
   end
 
   defp validate_method(method) when method in @supported_methods, do: :ok
-  defp validate_method(_method), do: {:error, :unsupported_method}
+  defp validate_method(_method), do: {:error, "Unsupported method"}
 
   defp validate_identifier("plc", identifier) do
     identifier
@@ -429,7 +433,7 @@ defmodule Aether.ATProto.DID do
          true <- String.length(domain) <= 253 do
       :ok
     else
-      _ -> {:error, :invalid_identifier}
+      _ -> {:error, "Invalid identifier"}
     end
   end
 
@@ -438,14 +442,14 @@ defmodule Aether.ATProto.DID do
       Crypto.DID.parse_multikey(identifier)
       :ok
     rescue
-      _ -> {:error, :invalid_identifier}
+      _ -> {:error, "Invalid identifier"}
     end
   end
 
-  defp validate_identifier(_, _), do: {:error, :invalid_method}
+  defp validate_identifier(_, _), do: {:error, "Invalid method"}
 
   defp validate_pattern(string, pattern) do
-    if String.match?(string, pattern), do: :ok, else: {:error, :invalid_identifier}
+    if String.match?(string, pattern), do: :ok, else: {:error, "Invalid identifier"}
   end
 
   defp append_query(string, nil), do: string

@@ -51,7 +51,7 @@ defmodule Aether.DID do
          :ok <- validate_length(did),
          :ok <- validate_prefix(did),
          {:ok, method, id} <- extract_parts(did),
-         :ok <- assert_did_method(method, did),
+         :ok <- assert_did_method(method),
          :ok <- assert_did_msid(id, did) do
       {:ok, %__MODULE__{method: method, id: id}}
     else
@@ -145,26 +145,24 @@ defmodule Aether.DID do
   @doc """
   DID Method-name check function.
 
-  Check if the input is a valid DID method name, at the position between
-  `start` (inclusive) and `end` (exclusive).
+  Check if the input is a valid DID method name.
 
   ## Examples
 
-      iex> DID.Core.assert_did_method("web", "did:web:example.com")
+      iex> DID.Core.assert_did_method("web")
       :ok
 
-      iex> DID.Core.assert_did_method("web🚫", "did:web🚫:example")
+      iex> DID.Core.assert_did_method("web🚫")
       {:error, "Invalid character at position 3 in DID method name"}
   """
-  @spec assert_did_method(String.t(), String.t()) :: :ok | {:error, String.t()}
-  def assert_did_method(method, original_did \\ "") when is_binary(method) do
+  @spec assert_did_method(String.t()) :: :ok | {:error, String.t()}
+  def assert_did_method(method) when is_binary(method) do
     method
     |> String.to_charlist()
     |> Enum.with_index()
     |> Enum.find_value(:ok, fn {char, index} ->
       unless valid_method_char?(char) do
-        {:error,
-         "Invalid character at position #{index + String.length(@did_prefix)} in DID method name"}
+        {:error, "Invalid character at position #{index} in DID method name"}
       end
     end)
   end
@@ -172,8 +170,8 @@ defmodule Aether.DID do
   @doc """
   DID Method-specific identifier check function.
 
-  Check if the input is a valid DID method-specific identifier, at the position
-  between `start` (inclusive) and `end` (exclusive).
+  Check if the input is a valid DID method-specific identifier, reporting
+  positions relative to the original DID string.
 
   ## Examples
 
@@ -184,15 +182,11 @@ defmodule Aether.DID do
       {:error, "Disallowed character in DID at position 15"}
   """
   @spec assert_did_msid(String.t(), String.t()) :: :ok | {:error, String.t()}
-  def assert_did_msid(msid, original_did \\ "") when is_binary(msid) do
-    case validate_msid(
-           msid,
-           original_did,
-           String.length(@did_prefix) + String.length(extract_method(original_did)) + 1
-         ) do
-      :ok -> :ok
-      {:error, reason} -> {:error, reason}
-    end
+  def assert_did_msid(msid, original_did) when is_binary(msid) and is_binary(original_did) do
+    # Calculate the starting position of the MSID in the original DID
+    method = extract_method(original_did)
+    start_position = String.length(@did_prefix) + String.length(method) + 1
+    validate_msid(msid, original_did, start_position)
   end
 
   @doc """
@@ -235,7 +229,7 @@ defmodule Aether.DID do
 
     case parts do
       ["did", method, id] when id != "" -> {:ok, method, id}
-      ["did", method, ""] -> {:error, "DID method-specific id must not be empty"}
+      ["did", _method, ""] -> {:error, "DID method-specific id must not be empty"}
       ["did", ""] -> {:error, "Empty method name"}
       _ -> {:error, "Missing colon after method name"}
     end
