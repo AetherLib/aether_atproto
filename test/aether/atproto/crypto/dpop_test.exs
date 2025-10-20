@@ -1,7 +1,7 @@
 defmodule Aether.ATProto.Crypto.DPoPTest do
   use ExUnit.Case, async: true
 
-  alias Aether.ATProto.Crypto.DPoP
+  alias Aether.Crypto.DPoP
 
   describe "generate_key/0" do
     test "generates a valid ES256 key pair" do

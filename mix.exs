@@ -81,8 +81,8 @@ defmodule AetherAtprotoCore.MixProject do
         Aether.ATProto.CAR.Block
       ],
       Crypto: [
-        Aether.ATProto.Crypto.DPoP,
-        Aether.ATProto.Crypto.PKCE
+        Aether.Crypto.DPoP,
+        Aether.Crypto.PKCE
       ],
       DID: [
         Aether.ATProto.DID,
